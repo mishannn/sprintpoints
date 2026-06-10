@@ -1,0 +1,110 @@
+import { Check, Clipboard, RefreshCcw } from "lucide-react";
+import type { Issue, Notice, Participant, RoomState, Vote } from "../../../entities/room/model/types";
+import { useCopyInviteLink } from "../../../features/copy-invite/model/useCopyInviteLink";
+import { InviteCard } from "../../../widgets/invite-card/ui/InviteCard";
+import { RoomSidebar } from "../../../widgets/room-sidebar/ui/RoomSidebar";
+import { VotingTable } from "../../../widgets/voting-table/ui/VotingTable";
+
+type VoteSummary = {
+  average: number;
+  min: number;
+  max: number;
+} | null;
+
+type RoomPageProps = {
+  activeIssue: Issue | null;
+  activeVotes: Vote[];
+  currentParticipant: Participant;
+  currentVote: Vote | null;
+  isHost: boolean;
+  notice: Notice | null;
+  state: RoomState;
+  summary: VoteSummary;
+  votersCount: number;
+  voteGroups: Record<string, number>;
+  onActivateIssue: (issue: Issue) => void;
+  onAddIssue: (title: string) => Promise<boolean>;
+  onCastVote: (value: string) => void;
+  onRefreshRoom: () => void;
+  onResetVoting: () => void;
+  onRevealVotes: () => void;
+  onSetEstimate: (value: string) => void;
+};
+
+export function RoomPage({
+  activeIssue,
+  activeVotes,
+  currentParticipant,
+  currentVote,
+  isHost,
+  notice,
+  state,
+  summary,
+  votersCount,
+  voteGroups,
+  onActivateIssue,
+  onAddIssue,
+  onCastVote,
+  onRefreshRoom,
+  onResetVoting,
+  onRevealVotes,
+  onSetEstimate,
+}: RoomPageProps) {
+  const { copied, copyInviteLink } = useCopyInviteLink();
+
+  const handleCopyInviteLink = () => {
+    void copyInviteLink(state.room.code);
+  };
+
+  return (
+    <main className="workspace">
+      <header className="topbar">
+        <div>
+          <span className="eyebrow">Room {state.room.code}</span>
+          <h1>{state.room.name}</h1>
+        </div>
+        <div className="topbar-actions">
+          <button className="icon-button" type="button" onClick={handleCopyInviteLink} title="Copy invite link" aria-label="Copy invite link">
+            {copied ? <Check size={19} aria-hidden="true" /> : <Clipboard size={19} aria-hidden="true" />}
+          </button>
+          <button className="ghost-action" type="button" onClick={onRefreshRoom}>
+            <RefreshCcw size={17} aria-hidden="true" />
+            Sync
+          </button>
+        </div>
+      </header>
+
+      {notice ? <p className={`notice ${notice.kind}`}>{notice.message}</p> : null}
+
+      <section className="room-layout">
+        <RoomSidebar
+          activeIssue={activeIssue}
+          activeVotes={activeVotes}
+          isHost={isHost}
+          issues={state.issues}
+          participants={state.participants}
+          onActivateIssue={onActivateIssue}
+          onAddIssue={onAddIssue}
+        />
+
+        <VotingTable
+          activeIssue={activeIssue}
+          activeVotes={activeVotes}
+          currentParticipant={currentParticipant}
+          currentVote={currentVote}
+          isHost={isHost}
+          room={state.room}
+          summary={summary}
+          votersCount={votersCount}
+          voteGroups={voteGroups}
+          onCastVote={onCastVote}
+          onRevealVotes={onRevealVotes}
+          onResetVoting={onResetVoting}
+          onSetEstimate={onSetEstimate}
+        />
+
+        <InviteCard code={state.room.code} copied={copied} onCopyInviteLink={handleCopyInviteLink} />
+      </section>
+    </main>
+  );
+}
