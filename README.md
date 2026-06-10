@@ -10,8 +10,11 @@ It is built as a lightweight product: a static React frontend that can be hosted
 - **Invite-link collaboration**: participants join by room code or shared URL.
 - **Private voting**: votes stay hidden until the facilitator reveals them.
 - **Realtime updates**: participants, stories, votes, reveals, and resets sync across connected clients.
-- **Story queue**: add stories, switch the active story, and store the final estimate.
+- **Story queue**: add and edit stories, switch the active story, store the final estimate, and keep story details visible while voting.
+- **Jira CSV workflow**: import stories from Jira-style CSV files with column mapping, then export the room backlog back to CSV.
 - **Spectator mode**: let stakeholders observe without affecting the vote count.
+- **Sync feedback**: optimistic updates and loading states keep slow realtime writes visible to the facilitator and participants.
+- **Setup guard**: missing Supabase configuration shows a setup-required screen instead of a broken room.
 - **Static hosting ready**: deploy the frontend to GitHub Pages with a GitHub Actions workflow.
 
 ## Tech Stack
@@ -28,7 +31,7 @@ The frontend is a single-page app. Supabase stores room data in four tables:
 
 - `rooms`: room metadata, card set, reveal state, active story
 - `participants`: room members, spectator flag, heartbeat timestamp
-- `issues`: story queue and final estimates
+- `issues`: story queue, descriptions, links, order, and final estimates
 - `votes`: one vote per participant per story
 
 The app subscribes to Supabase realtime changes and reloads room state when any relevant table changes.
@@ -75,7 +78,7 @@ http://localhost:5173/
 
 ## Supabase Setup
 
-Create a Supabase Cloud project, then apply the migration:
+Create a Supabase Cloud project, then apply the migrations:
 
 ```bash
 npx supabase login
@@ -83,10 +86,11 @@ npx supabase link --project-ref your-project-ref
 npx supabase db push
 ```
 
-The migration file is:
+The migration files are:
 
 ```text
 supabase/migrations/20260610160000_init_planning_poker.sql
+supabase/migrations/20260610190000_add_issue_details.sql
 ```
 
 You can also run the migration manually in the Supabase SQL Editor.
@@ -136,12 +140,14 @@ In GitHub:
 1. Open repository **Settings**.
 2. Go to **Pages**.
 3. Set **Source** to **GitHub Actions**.
-4. Add repository secrets:
+4. Add repository secrets or repository variables:
 
 ```bash
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 VITE_SUPABASE_ANON_KEY=your-public-anon-key
 ```
+
+The workflow validates both values before building so a misconfigured Pages deploy fails early.
 
 For standard GitHub project pages, the app automatically uses `/<repository-name>/` as the Vite base path. For a custom domain, add a repository variable:
 
@@ -168,8 +174,7 @@ Recommended hardening path:
 ## Product Roadmap
 
 - Custom card decks per room
-- Import stories from Jira or GitHub issues
-- Export estimates as CSV
+- Import stories from GitHub issues
 - Timer for voting rounds
 - Room history and completed story archive
 - Facilitator handoff
@@ -182,15 +187,42 @@ Recommended hardening path:
 ├── .github/workflows/deploy-pages.yml
 ├── public/.nojekyll
 ├── src/
-│   ├── App.tsx
+│   ├── app/
+│   │   ├── App.tsx
+│   │   └── index.ts
+│   ├── entities/room/model/
+│   │   ├── roomApi.ts
+│   │   ├── types.ts
+│   │   └── voteStats.ts
+│   ├── features/
+│   │   ├── copy-invite/model/useCopyInviteLink.ts
+│   │   ├── create-room/model/createRoom.ts
+│   │   ├── join-room/model/joinRoom.ts
+│   │   ├── manage-issues/model/
+│   │   │   ├── issues.ts
+│   │   │   └── jiraCsv.ts
+│   │   ├── room-session/model/useRoomSession.ts
+│   │   └── vote/model/voting.ts
+│   ├── pages/
+│   │   ├── lobby/ui/LobbyPage.tsx
+│   │   ├── room/ui/RoomPage.tsx
+│   │   └── setup-required/ui/SetupRequiredPage.tsx
+│   ├── shared/
+│   │   ├── api/supabase.ts
+│   │   ├── config/cards.ts
+│   │   └── lib/
+│   ├── widgets/
+│   │   ├── invite-card/ui/InviteCard.tsx
+│   │   ├── room-sidebar/ui/
+│   │   └── voting-table/ui/VotingTable.tsx
 │   ├── main.tsx
 │   ├── styles.css
-│   ├── supabase.ts
 │   └── types.ts
 ├── supabase/
 │   ├── config.toml
 │   └── migrations/
-│       └── 20260610160000_init_planning_poker.sql
+│       ├── 20260610160000_init_planning_poker.sql
+│       └── 20260610190000_add_issue_details.sql
 ├── .env.example
 ├── vite.config.ts
 └── package.json
