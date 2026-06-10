@@ -333,6 +333,7 @@ textarea {
 .room-layout {
   display: grid;
   grid-template-columns: minmax(230px, 300px) minmax(420px, 1fr) minmax(220px, 280px);
+  align-items: start;
   gap: 18px;
   max-width: 1500px;
   margin: 0 auto;
@@ -350,6 +351,11 @@ textarea {
   gap: 18px;
 }
 
+.sidebar {
+  grid-template-rows: auto minmax(0, 1fr);
+  align-self: start;
+}
+
 .sidebar-section,
 .table,
 .share-card {
@@ -359,7 +365,13 @@ textarea {
 }
 
 .sidebar-section {
+  min-height: 0;
   padding: 18px;
+}
+
+.sidebar-section:last-child {
+  display: flex;
+  flex-direction: column;
 }
 
 .people-list,
@@ -367,6 +379,13 @@ textarea {
   display: grid;
   gap: 8px;
   margin-top: 14px;
+}
+
+.issue-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .person-row {
@@ -506,6 +525,18 @@ textarea {
   margin: 0;
 }
 
+.story-toolbar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.story-toolbar .compact-text-button {
+  width: 100%;
+  margin: 0;
+}
+
 .table {
   padding: 22px;
 }
@@ -569,6 +600,7 @@ textarea {
   color: #1f343f;
   line-height: 1.55;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .cards-grid {
@@ -737,6 +769,12 @@ textarea {
   padding: 24px;
 }
 
+.import-modal-panel {
+  width: min(760px, 100%);
+  max-height: min(760px, calc(100vh - 48px));
+  overflow: auto;
+}
+
 .modal-header {
   display: flex;
   align-items: flex-start;
@@ -753,6 +791,104 @@ textarea {
   display: grid;
   gap: 2px;
   margin-top: 12px;
+}
+
+.csv-file-field {
+  margin-top: 14px;
+}
+
+.visually-hidden-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.csv-file-button {
+  display: inline-flex;
+  width: auto;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #bfd0da;
+  border-radius: 7px;
+  background: #f7fafc;
+  color: #1f343f;
+  cursor: pointer;
+  padding: 0 15px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.visually-hidden-input:focus-visible + .csv-file-button {
+  border-color: #156f67;
+  box-shadow: 0 0 0 3px rgb(21 111 103 / 14%);
+}
+
+.form-error {
+  border-radius: 7px;
+  margin: 12px 0 0;
+  background: #ffe9e6;
+  color: #8a2c20;
+  padding: 10px 12px;
+  font-weight: 800;
+}
+
+.import-file-name {
+  margin: 10px 0 0;
+  color: #40505d;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.mapping-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 14px;
+}
+
+.import-preview {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #d4dee7;
+  border-radius: 8px;
+  margin-top: 16px;
+  background: #f8fbfd;
+  padding: 12px;
+}
+
+.import-preview-header,
+.import-preview-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.import-preview-header span,
+.import-preview-row span {
+  color: #647381;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.import-preview-row {
+  border-radius: 7px;
+  background: #ffffff;
+  padding: 10px 12px;
+}
+
+.import-preview-row strong,
+.import-preview-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .modal-actions {
@@ -825,6 +961,15 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .sidebar {
+    max-height: none;
+  }
+
+  .issue-list {
+    overflow: visible;
+    padding-right: 0;
+  }
+
   .intro h1 {
     font-size: 44px;
   }
@@ -850,6 +995,11 @@ textarea {
   }
 
   .status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mapping-grid,
+  .story-toolbar {
     grid-template-columns: 1fr;
   }
 

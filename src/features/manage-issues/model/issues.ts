@@ -7,6 +7,10 @@ export type IssueDetailsInput = {
   link: string;
 };
 
+export type IssueImportInput = IssueDetailsInput & {
+  estimate: string;
+};
+
 export async function createIssue(roomId: string, details: IssueDetailsInput, currentIssues: Issue[]) {
   if (!supabase) {
     throw new Error("Supabase is not configured.");
@@ -37,6 +41,47 @@ export async function createIssue(roomId: string, details: IssueDetailsInput, cu
   }
 
   return issue;
+}
+
+export async function importIssues(roomId: string, details: IssueImportInput[], currentIssues: Issue[], activeIssueId: string | null) {
+  if (!supabase) {
+    throw new Error("Supabase is not configured.");
+  }
+
+  const startPosition = Math.max(0, ...currentIssues.map((issue) => issue.position)) + 1;
+  const rows = details
+    .map((issue, index) => ({
+      room_id: roomId,
+      title: issue.title.trim(),
+      description: issue.description.trim(),
+      link: issue.link.trim(),
+      estimate: issue.estimate.trim() || null,
+      position: startPosition + index,
+    }))
+    .filter((issue) => issue.title);
+
+  if (rows.length === 0) {
+    return [];
+  }
+
+  const { data: issues, error } = await supabase.from("issues").insert(rows).select("*");
+
+  if (error || !issues) {
+    throw new Error("Could not import stories.");
+  }
+
+  if (!activeIssueId && issues[0]) {
+    const { error: roomError } = await supabase
+      .from("rooms")
+      .update({ active_issue_id: issues[0].id, revealed: false })
+      .eq("id", roomId);
+
+    if (roomError) {
+      throw new Error("Could not activate the imported story.");
+    }
+  }
+
+  return issues;
 }
 
 export async function updateIssueDetails(issueId: string, details: IssueDetailsInput) {

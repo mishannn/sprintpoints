@@ -4,9 +4,11 @@ import { joinPlanningRoom } from "../../join-room/model/joinRoom";
 import {
   createIssue,
   activateIssue as activateIssueRequest,
+  importIssues as importIssuesRequest,
   saveIssueEstimate,
   updateIssueDetails,
   type IssueDetailsInput,
+  type IssueImportInput,
 } from "../../manage-issues/model/issues";
 import { resetIssueVoting, revealRoomVotes, submitVote } from "../../vote/model/voting";
 import { loadRoomState } from "../../../entities/room/model/roomApi";
@@ -405,6 +407,27 @@ export function useRoomSession() {
     }
   }, [isHost, loadRoom, setPending, showError, state]);
 
+  const importIssues = useCallback(async (details: IssueImportInput[]) => {
+    if (!state || !isHost) {
+      return false;
+    }
+
+    setNotice(null);
+    setPending({ addIssue: true });
+
+    try {
+      const issues = await importIssuesRequest(state.room.id, details, state.issues, state.room.active_issue_id);
+      await loadRoom(state.room.code);
+      setNotice({ kind: "success", message: `Imported ${issues.length} ${issues.length === 1 ? "story" : "stories"}.` });
+      return issues.length > 0;
+    } catch (error) {
+      showError(error, "Could not import stories.");
+      return false;
+    } finally {
+      setPending({ addIssue: false });
+    }
+  }, [isHost, loadRoom, setPending, showError, state]);
+
   const activateIssue = useCallback(async (issue: Issue) => {
     if (!state || !isHost) {
       return;
@@ -512,6 +535,7 @@ export function useRoomSession() {
     resetVoting,
     addIssue,
     editIssue,
+    importIssues,
     activateIssue,
     setEstimate,
     refreshRoom,

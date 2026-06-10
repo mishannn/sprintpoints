@@ -40,6 +40,7 @@ export function App() {
       onActivateIssue={session.activateIssue}
       onAddIssue={session.addIssue}
       onEditIssue={session.editIssue}
+      onImportIssues={session.importIssues}
       onCastVote={session.castVote}
       onRefreshRoom={session.refreshRoom}
       onResetVoting={session.resetVoting}

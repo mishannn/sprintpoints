@@ -1,6 +1,6 @@
 import { Check, Clipboard, Loader2, RefreshCcw } from "lucide-react";
 import type { Issue, Notice, Participant, RoomState, Vote } from "../../../entities/room/model/types";
-import type { IssueDetailsInput } from "../../../features/manage-issues/model/issues";
+import type { IssueDetailsInput, IssueImportInput } from "../../../features/manage-issues/model/issues";
 import type { PendingSync } from "../../../features/room-session/model/useRoomSession";
 import { useCopyInviteLink } from "../../../features/copy-invite/model/useCopyInviteLink";
 import { InviteCard } from "../../../widgets/invite-card/ui/InviteCard";
@@ -28,6 +28,7 @@ type RoomPageProps = {
   onActivateIssue: (issue: Issue) => void;
   onAddIssue: (details: IssueDetailsInput) => Promise<boolean>;
   onEditIssue: (issue: Issue, details: IssueDetailsInput) => Promise<boolean>;
+  onImportIssues: (details: IssueImportInput[]) => Promise<boolean>;
   onCastVote: (value: string) => void;
   onRefreshRoom: () => void;
   onResetVoting: () => void;
@@ -50,6 +51,7 @@ export function RoomPage({
   onActivateIssue,
   onAddIssue,
   onEditIssue,
+  onImportIssues,
   onCastVote,
   onRefreshRoom,
   onResetVoting,
@@ -90,9 +92,11 @@ export function RoomPage({
           issues={state.issues}
           pendingSync={pendingSync}
           participants={state.participants}
+          roomName={state.room.name}
           onActivateIssue={onActivateIssue}
           onAddIssue={onAddIssue}
           onEditIssue={onEditIssue}
+          onImportIssues={onImportIssues}
         />
 
         <VotingTable

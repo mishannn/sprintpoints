@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { ExternalLink, Loader2, Pencil, Plus, Settings, Users } from "lucide-react";
+import { Download, ExternalLink, Loader2, Pencil, Plus, Settings, Upload, Users } from "lucide-react";
 import type { Issue, Participant, Vote } from "../../../entities/room/model/types";
-import type { IssueDetailsInput } from "../../../features/manage-issues/model/issues";
+import type { IssueDetailsInput, IssueImportInput } from "../../../features/manage-issues/model/issues";
+import { downloadJiraCsv } from "../../../features/manage-issues/model/jiraCsv";
 import type { PendingSync } from "../../../features/room-session/model/useRoomSession";
 import { AddIssueModal } from "./AddIssueModal";
+import { ImportIssuesModal } from "./ImportIssuesModal";
 
 type RoomSidebarProps = {
   activeIssue: Issue | null;
@@ -12,9 +14,11 @@ type RoomSidebarProps = {
   issues: Issue[];
   pendingSync: PendingSync;
   participants: Participant[];
+  roomName: string;
   onActivateIssue: (issue: Issue) => void;
   onAddIssue: (details: IssueDetailsInput) => Promise<boolean>;
   onEditIssue: (issue: Issue, details: IssueDetailsInput) => Promise<boolean>;
+  onImportIssues: (details: IssueImportInput[]) => Promise<boolean>;
 };
 
 function getExternalHref(value: string) {
@@ -28,11 +32,14 @@ export function RoomSidebar({
   issues,
   pendingSync,
   participants,
+  roomName,
   onActivateIssue,
   onAddIssue,
   onEditIssue,
+  onImportIssues,
 }: RoomSidebarProps) {
   const [isAddIssueOpen, setIsAddIssueOpen] = useState(false);
+  const [isImportIssuesOpen, setIsImportIssuesOpen] = useState(false);
   const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
 
   const closeModal = () => {
@@ -86,6 +93,23 @@ export function RoomSidebar({
             </button>
           ) : null}
         </div>
+        {isHost ? (
+          <div className="story-toolbar">
+            <button className="secondary-action compact-text-button" type="button" onClick={() => setIsImportIssuesOpen(true)}>
+              <Upload size={17} aria-hidden="true" />
+              Import
+            </button>
+            <button
+              className="secondary-action compact-text-button"
+              type="button"
+              onClick={() => downloadJiraCsv(issues, roomName)}
+              disabled={issues.length === 0}
+            >
+              <Download size={17} aria-hidden="true" />
+              Export
+            </button>
+          </div>
+        ) : null}
         <div className="issue-list">
           {issues.map((issue) => {
             const link = issue.link ?? "";
@@ -136,6 +160,12 @@ export function RoomSidebar({
         isSaving={pendingSync.addIssue || Boolean(editingIssue && pendingSync.editIssueId === editingIssue.id)}
         onClose={closeModal}
         onSubmit={handleModalSubmit}
+      />
+      <ImportIssuesModal
+        isOpen={isImportIssuesOpen}
+        isSaving={pendingSync.addIssue}
+        onClose={() => setIsImportIssuesOpen(false)}
+        onSubmit={onImportIssues}
       />
     </aside>
   );
