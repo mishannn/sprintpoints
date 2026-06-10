@@ -32,7 +32,7 @@ export async function createPlanningRoom(roomName: string, participantName: stri
 
   const { data: issue, error: issueError } = await supabase
     .from("issues")
-    .insert({ room_id: room.id, title: "First story", position: 1 })
+    .insert({ room_id: room.id, title: "First story", description: "", link: "", position: 1 })
     .select("*")
     .single();
 

@@ -88,6 +88,8 @@ export type Database = {
           id: string;
           room_id: string;
           title: string;
+          description: string;
+          link: string;
           position: number;
           estimate: string | null;
           created_at: string;
@@ -96,6 +98,8 @@ export type Database = {
           id?: string;
           room_id: string;
           title: string;
+          description?: string;
+          link?: string;
           position?: number;
           estimate?: string | null;
           created_at?: string;
@@ -104,6 +108,8 @@ export type Database = {
           id?: string;
           room_id?: string;
           title?: string;
+          description?: string;
+          link?: string;
           position?: number;
           estimate?: string | null;
           created_at?: string;

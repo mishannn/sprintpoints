@@ -39,6 +39,7 @@ export function App() {
       voteGroups={session.voteGroups}
       onActivateIssue={session.activateIssue}
       onAddIssue={session.addIssue}
+      onEditIssue={session.editIssue}
       onCastVote={session.castVote}
       onRefreshRoom={session.refreshRoom}
       onResetVoting={session.resetVoting}

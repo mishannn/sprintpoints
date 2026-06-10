@@ -21,7 +21,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -156,6 +157,21 @@ code {
   color: #156f67;
 }
 
+.story-section-title {
+  justify-content: space-between;
+}
+
+.section-title-label {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.compact-button {
+  flex: 0 0 auto;
+}
+
 .panel-heading h2,
 .section-title h2,
 .share-card h2 {
@@ -173,7 +189,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   border: 1px solid #c7d3dc;
   border-radius: 7px;
@@ -185,9 +202,16 @@ select {
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   border-color: #156f67;
   box-shadow: 0 0 0 3px rgb(21 111 103 / 14%);
+}
+
+textarea {
+  min-height: 112px;
+  padding: 12px;
+  resize: vertical;
 }
 
 .checkbox-line {
@@ -345,8 +369,7 @@ select:focus {
   margin-top: 14px;
 }
 
-.person-row,
-.issue-row {
+.person-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -358,8 +381,7 @@ select:focus {
 }
 
 .person-row strong,
-.person-row span,
-.issue-row span {
+.person-row span {
   display: block;
   min-width: 0;
   overflow: hidden;
@@ -386,23 +408,102 @@ select:focus {
   background: #2f9f68;
 }
 
-.issue-row {
-  width: 100%;
+.issue-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: stretch;
   border: 1px solid transparent;
+  border-radius: 7px;
+  background: #f4f8fb;
+  padding: 6px;
+}
+
+.issue-card.active {
+  border-color: #c7d3dc;
+  background: #ffffff;
+}
+
+.issue-open-button {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 54px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
   color: #1f343f;
+  padding: 6px 8px;
   text-align: left;
 }
 
-.issue-row.active {
-  border-color: #156f67;
-  background: #e7f4f1;
+.issue-open-button:hover:not(:disabled) {
+  background: #edf4f8;
 }
 
-.add-issue {
+.issue-row-main {
   display: grid;
-  grid-template-columns: 1fr 42px;
+  min-width: 0;
+  gap: 3px;
+}
+
+.issue-row-side {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
   gap: 8px;
+}
+
+.issue-title {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: #1f343f;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.issue-link-text {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: #647381;
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.issue-estimate {
+  display: inline-grid;
+  min-width: 34px;
+  min-height: 34px;
+  place-items: center;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #1f343f;
+  font-weight: 600;
+}
+
+.issue-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.compact-text-button {
+  width: auto;
+  min-height: 36px;
   margin-top: 14px;
+  padding: 0 11px;
+  white-space: nowrap;
+}
+
+.story-section-title .compact-text-button {
+  margin: 0;
 }
 
 .table {
@@ -430,6 +531,44 @@ select:focus {
   color: #40505d;
   font-weight: 900;
   white-space: nowrap;
+}
+
+.story-details {
+  display: grid;
+  gap: 14px;
+  border: 1px solid #d4dee7;
+  border-radius: 8px;
+  background: #f8fbfd;
+  padding: 16px;
+}
+
+.story-detail-row {
+  display: grid;
+  gap: 7px;
+}
+
+.story-detail-row span {
+  color: #647381;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.story-detail-row a {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  color: #40505d;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.story-detail-row p {
+  margin: 0;
+  color: #1f343f;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .cards-grid {
@@ -577,6 +716,56 @@ select:focus {
 .sync-spinner {
   flex: 0 0 auto;
   color: #156f67;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: rgb(31 52 63 / 72%);
+  padding: 24px;
+}
+
+.modal-panel {
+  width: min(620px, 100%);
+  border: 1px solid #d4dee7;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 26px 90px rgb(12 30 42 / 28%);
+  padding: 24px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 25px;
+}
+
+.story-form {
+  display: grid;
+  gap: 2px;
+  margin-top: 12px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.modal-actions .primary-action,
+.modal-actions .ghost-action {
+  width: auto;
+  margin: 0;
 }
 
 .share-card {

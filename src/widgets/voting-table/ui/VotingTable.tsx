@@ -1,4 +1,4 @@
-import { Coffee, Eye, EyeOff, Loader2, RefreshCcw } from "lucide-react";
+import { Coffee, ExternalLink, Eye, EyeOff, Loader2, RefreshCcw } from "lucide-react";
 import type { Issue, Participant, Room, Vote } from "../../../entities/room/model/types";
 import type { PendingSync } from "../../../features/room-session/model/useRoomSession";
 
@@ -25,6 +25,10 @@ type VotingTableProps = {
   onSetEstimate: (value: string) => void;
 };
 
+function getExternalHref(value: string) {
+  return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+}
+
 export function VotingTable({
   activeIssue,
   activeVotes,
@@ -41,6 +45,10 @@ export function VotingTable({
   onResetVoting,
   onSetEstimate,
 }: VotingTableProps) {
+  const activeDescription = activeIssue?.description ?? "";
+  const activeLink = activeIssue?.link ?? "";
+  const activeStoryLink = activeLink.trim() ? getExternalHref(activeLink.trim()) : null;
+
   return (
     <section className="table">
       <div className="story-header">
@@ -53,6 +61,26 @@ export function VotingTable({
           {room.revealed ? "Revealed" : "Voting"}
         </div>
       </div>
+
+      {activeIssue && (activeDescription || activeStoryLink) ? (
+        <div className="story-details">
+          {activeStoryLink ? (
+            <div className="story-detail-row">
+              <span>Link</span>
+              <a href={activeStoryLink} target="_blank" rel="noreferrer">
+                {activeLink}
+                <ExternalLink size={16} aria-hidden="true" />
+              </a>
+            </div>
+          ) : null}
+          {activeDescription ? (
+            <div className="story-detail-row">
+              <span>Description</span>
+              <p>{activeDescription}</p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="cards-grid" aria-label="Vote cards">
         {room.card_set.map((card) => (

@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPlanningRoom } from "../../create-room/model/createRoom";
 import { joinPlanningRoom } from "../../join-room/model/joinRoom";
-import { createIssue, activateIssue as activateIssueRequest, saveIssueEstimate } from "../../manage-issues/model/issues";
+import {
+  createIssue,
+  activateIssue as activateIssueRequest,
+  saveIssueEstimate,
+  updateIssueDetails,
+  type IssueDetailsInput,
+} from "../../manage-issues/model/issues";
 import { resetIssueVoting, revealRoomVotes, submitVote } from "../../vote/model/voting";
 import { loadRoomState } from "../../../entities/room/model/roomApi";
 import type { Issue, Notice, Participant, RoomState } from "../../../entities/room/model/types";
@@ -16,6 +22,7 @@ export type PendingSync = {
   resetVoting: boolean;
   activeIssueId: string | null;
   addIssue: boolean;
+  editIssueId: string | null;
   estimate: boolean;
   refreshRoom: boolean;
 };
@@ -26,6 +33,7 @@ const idlePendingSync: PendingSync = {
   resetVoting: false,
   activeIssueId: null,
   addIssue: false,
+  editIssueId: null,
   estimate: false,
   refreshRoom: false,
 };
@@ -314,7 +322,7 @@ export function useRoomSession() {
     }
   }, [activeIssue, isHost, loadRoom, setPending, showError, state]);
 
-  const addIssue = useCallback(async (title: string) => {
+  const addIssue = useCallback(async (details: IssueDetailsInput) => {
     if (!state || !isHost) {
       return false;
     }
@@ -323,7 +331,7 @@ export function useRoomSession() {
     setPending({ addIssue: true });
 
     try {
-      const issue = await createIssue(state.room.id, title, state.issues);
+      const issue = await createIssue(state.room.id, details, state.issues);
       if (issue) {
         setState((current) =>
           current
@@ -342,6 +350,58 @@ export function useRoomSession() {
       return false;
     } finally {
       setPending({ addIssue: false });
+    }
+  }, [isHost, loadRoom, setPending, showError, state]);
+
+  const editIssue = useCallback(async (issue: Issue, details: IssueDetailsInput) => {
+    if (!state || !isHost) {
+      return false;
+    }
+
+    const previousIssue = issue;
+    const optimisticIssue = {
+      ...issue,
+      title: details.title.trim(),
+      description: details.description.trim(),
+      link: details.link.trim(),
+    };
+
+    setNotice(null);
+    setPending({ editIssueId: issue.id });
+    setState((current) =>
+      current
+        ? {
+            ...current,
+            issues: current.issues.map((item) => (item.id === issue.id ? optimisticIssue : item)),
+          }
+        : current,
+    );
+
+    try {
+      const updatedIssue = await updateIssueDetails(issue.id, details);
+      setState((current) =>
+        current
+          ? {
+              ...current,
+              issues: current.issues.map((item) => (item.id === issue.id ? updatedIssue : item)),
+            }
+          : current,
+      );
+      await loadRoom(state.room.code);
+      return true;
+    } catch (error) {
+      setState((current) =>
+        current
+          ? {
+              ...current,
+              issues: current.issues.map((item) => (item.id === issue.id ? previousIssue : item)),
+            }
+          : current,
+      );
+      showError(error, "Could not update the story.");
+      return false;
+    } finally {
+      setPending({ editIssueId: null });
     }
   }, [isHost, loadRoom, setPending, showError, state]);
 
@@ -451,6 +511,7 @@ export function useRoomSession() {
     revealVotes,
     resetVoting,
     addIssue,
+    editIssue,
     activateIssue,
     setEstimate,
     refreshRoom,

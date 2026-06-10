@@ -1,5 +1,6 @@
 import { Check, Clipboard, Loader2, RefreshCcw } from "lucide-react";
 import type { Issue, Notice, Participant, RoomState, Vote } from "../../../entities/room/model/types";
+import type { IssueDetailsInput } from "../../../features/manage-issues/model/issues";
 import type { PendingSync } from "../../../features/room-session/model/useRoomSession";
 import { useCopyInviteLink } from "../../../features/copy-invite/model/useCopyInviteLink";
 import { InviteCard } from "../../../widgets/invite-card/ui/InviteCard";
@@ -25,7 +26,8 @@ type RoomPageProps = {
   votersCount: number;
   voteGroups: Record<string, number>;
   onActivateIssue: (issue: Issue) => void;
-  onAddIssue: (title: string) => Promise<boolean>;
+  onAddIssue: (details: IssueDetailsInput) => Promise<boolean>;
+  onEditIssue: (issue: Issue, details: IssueDetailsInput) => Promise<boolean>;
   onCastVote: (value: string) => void;
   onRefreshRoom: () => void;
   onResetVoting: () => void;
@@ -47,6 +49,7 @@ export function RoomPage({
   voteGroups,
   onActivateIssue,
   onAddIssue,
+  onEditIssue,
   onCastVote,
   onRefreshRoom,
   onResetVoting,
@@ -89,6 +92,7 @@ export function RoomPage({
           participants={state.participants}
           onActivateIssue={onActivateIssue}
           onAddIssue={onAddIssue}
+          onEditIssue={onEditIssue}
         />
 
         <VotingTable

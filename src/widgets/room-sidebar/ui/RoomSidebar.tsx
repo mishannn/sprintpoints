@@ -1,8 +1,9 @@
-import type { FormEvent } from "react";
 import { useState } from "react";
-import { Loader2, Plus, Settings, Users } from "lucide-react";
+import { ExternalLink, Loader2, Pencil, Plus, Settings, Users } from "lucide-react";
 import type { Issue, Participant, Vote } from "../../../entities/room/model/types";
+import type { IssueDetailsInput } from "../../../features/manage-issues/model/issues";
 import type { PendingSync } from "../../../features/room-session/model/useRoomSession";
+import { AddIssueModal } from "./AddIssueModal";
 
 type RoomSidebarProps = {
   activeIssue: Issue | null;
@@ -12,8 +13,13 @@ type RoomSidebarProps = {
   pendingSync: PendingSync;
   participants: Participant[];
   onActivateIssue: (issue: Issue) => void;
-  onAddIssue: (title: string) => Promise<boolean>;
+  onAddIssue: (details: IssueDetailsInput) => Promise<boolean>;
+  onEditIssue: (issue: Issue, details: IssueDetailsInput) => Promise<boolean>;
 };
+
+function getExternalHref(value: string) {
+  return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+}
 
 export function RoomSidebar({
   activeIssue,
@@ -24,22 +30,28 @@ export function RoomSidebar({
   participants,
   onActivateIssue,
   onAddIssue,
+  onEditIssue,
 }: RoomSidebarProps) {
-  const [newIssueTitle, setNewIssueTitle] = useState("");
+  const [isAddIssueOpen, setIsAddIssueOpen] = useState(false);
+  const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
 
-  async function handleAddIssue(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  const closeModal = () => {
+    setIsAddIssueOpen(false);
+    setEditingIssue(null);
+  };
 
-    const added = await onAddIssue(newIssueTitle);
-    if (added) {
-      setNewIssueTitle("");
+  const handleModalSubmit = (details: IssueDetailsInput) => {
+    if (editingIssue) {
+      return onEditIssue(editingIssue, details);
     }
-  }
+
+    return onAddIssue(details);
+  };
 
   return (
     <aside className="sidebar">
       <div className="sidebar-section">
-        <div className="section-title">
+        <div className="section-title story-section-title">
           <Users size={18} aria-hidden="true" />
           <h2>People</h2>
         </div>
@@ -62,39 +74,69 @@ export function RoomSidebar({
       </div>
 
       <div className="sidebar-section">
-        <div className="section-title">
-          <Settings size={18} aria-hidden="true" />
-          <h2>Stories</h2>
+        <div className="section-title story-section-title">
+          <span className="section-title-label">
+            <Settings size={18} aria-hidden="true" />
+            <h2>Stories</h2>
+          </span>
+          {isHost ? (
+            <button className="secondary-action compact-text-button" type="button" onClick={() => setIsAddIssueOpen(true)}>
+              {pendingSync.addIssue ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <Plus size={18} aria-hidden="true" />}
+              Add story
+            </button>
+          ) : null}
         </div>
         <div className="issue-list">
-          {issues.map((issue) => (
-            <button
-              type="button"
-              className={`issue-row ${issue.id === activeIssue?.id ? "active" : ""}`}
-              key={issue.id}
-              onClick={() => onActivateIssue(issue)}
-              disabled={!isHost}
-            >
-              <span>{issue.title}</span>
-              {issue.estimate ? <strong>{issue.estimate}</strong> : null}
-              {pendingSync.activeIssueId === issue.id ? <Loader2 className="spin sync-spinner" size={15} aria-hidden="true" /> : null}
-            </button>
-          ))}
+          {issues.map((issue) => {
+            const link = issue.link ?? "";
+
+            return (
+              <div className={`issue-card ${issue.id === activeIssue?.id ? "active" : ""}`} key={issue.id}>
+                <button type="button" className="issue-open-button" onClick={() => onActivateIssue(issue)} disabled={!isHost}>
+                  <span className="issue-row-main">
+                    <span className="issue-title">{issue.title}</span>
+                    {link ? <span className="issue-link-text">{link}</span> : null}
+                  </span>
+                  <span className="issue-row-side">
+                    {pendingSync.activeIssueId === issue.id ? <Loader2 className="spin sync-spinner" size={15} aria-hidden="true" /> : null}
+                    {issue.estimate ? <span className="issue-estimate">{issue.estimate}</span> : null}
+                  </span>
+                </button>
+                <div className="issue-card-actions">
+                  {link ? (
+                    <a className="icon-button compact-button" href={getExternalHref(link)} target="_blank" rel="noreferrer" aria-label="Open story link">
+                      <ExternalLink size={17} aria-hidden="true" />
+                    </a>
+                  ) : null}
+                  {isHost ? (
+                    <button
+                      className="icon-button compact-button"
+                      type="button"
+                      onClick={() => setEditingIssue(issue)}
+                      aria-label="Edit story"
+                      disabled={pendingSync.editIssueId === issue.id}
+                    >
+                      {pendingSync.editIssueId === issue.id ? (
+                        <Loader2 className="spin" size={17} aria-hidden="true" />
+                      ) : (
+                        <Pencil size={17} aria-hidden="true" />
+                      )}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
         </div>
-        {isHost ? (
-          <form className="add-issue" onSubmit={handleAddIssue}>
-            <input
-              value={newIssueTitle}
-              onChange={(event) => setNewIssueTitle(event.target.value)}
-              placeholder="Add story"
-              aria-label="Add story"
-            />
-            <button className="icon-button" type="submit" aria-label="Add story">
-              {pendingSync.addIssue ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <Plus size={18} aria-hidden="true" />}
-            </button>
-          </form>
-        ) : null}
       </div>
+
+      <AddIssueModal
+        issue={editingIssue}
+        isOpen={isAddIssueOpen || Boolean(editingIssue)}
+        isSaving={pendingSync.addIssue || Boolean(editingIssue && pendingSync.editIssueId === editingIssue.id)}
+        onClose={closeModal}
+        onSubmit={handleModalSubmit}
+      />
     </aside>
   );
 }

@@ -53,6 +53,8 @@ create table public.issues (
   id uuid primary key default gen_random_uuid(),
   room_id uuid not null references public.rooms(id) on delete cascade,
   title text not null check (char_length(title) between 1 and 240),
+  description text not null default '',
+  link text not null default '',
   position integer not null default 1,
   estimate text null,
   created_at timestamptz not null default now()
