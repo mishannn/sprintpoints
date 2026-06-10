@@ -1,13 +1,15 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
-import { Plus, Settings, Users } from "lucide-react";
+import { Loader2, Plus, Settings, Users } from "lucide-react";
 import type { Issue, Participant, Vote } from "../../../entities/room/model/types";
+import type { PendingSync } from "../../../features/room-session/model/useRoomSession";
 
 type RoomSidebarProps = {
   activeIssue: Issue | null;
   activeVotes: Vote[];
   isHost: boolean;
   issues: Issue[];
+  pendingSync: PendingSync;
   participants: Participant[];
   onActivateIssue: (issue: Issue) => void;
   onAddIssue: (title: string) => Promise<boolean>;
@@ -18,6 +20,7 @@ export function RoomSidebar({
   activeVotes,
   isHost,
   issues,
+  pendingSync,
   participants,
   onActivateIssue,
   onAddIssue,
@@ -74,6 +77,7 @@ export function RoomSidebar({
             >
               <span>{issue.title}</span>
               {issue.estimate ? <strong>{issue.estimate}</strong> : null}
+              {pendingSync.activeIssueId === issue.id ? <Loader2 className="spin sync-spinner" size={15} aria-hidden="true" /> : null}
             </button>
           ))}
         </div>
@@ -86,7 +90,7 @@ export function RoomSidebar({
               aria-label="Add story"
             />
             <button className="icon-button" type="submit" aria-label="Add story">
-              <Plus size={18} aria-hidden="true" />
+              {pendingSync.addIssue ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <Plus size={18} aria-hidden="true" />}
             </button>
           </form>
         ) : null}

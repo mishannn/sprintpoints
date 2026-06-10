@@ -246,6 +246,10 @@ select:focus {
   color: #1f343f;
 }
 
+.is-syncing:disabled {
+  opacity: 1;
+}
+
 .notice {
   border-radius: 7px;
   margin: 18px 0 0;
@@ -436,6 +440,7 @@ select:focus {
 }
 
 .card-button {
+  position: relative;
   aspect-ratio: 0.72;
   min-height: 108px;
   border: 2px solid #c9d6df;
@@ -451,6 +456,13 @@ select:focus {
 .card-button.selected {
   border-color: #156f67;
   background: #e4f5f1;
+}
+
+.card-sync {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: #156f67;
 }
 
 .status-grid {
@@ -545,6 +557,28 @@ select:focus {
   max-width: 180px;
 }
 
+.select-sync {
+  position: relative;
+  max-width: 180px;
+}
+
+.select-sync select {
+  max-width: none;
+  padding-right: 34px;
+}
+
+.select-spinner {
+  position: absolute;
+  right: 10px;
+  top: 14px;
+  color: #156f67;
+}
+
+.sync-spinner {
+  flex: 0 0 auto;
+  color: #156f67;
+}
+
 .share-card {
   padding: 20px;
   position: sticky;
@@ -632,6 +666,7 @@ select:focus {
 
   .host-controls .primary-action,
   .host-controls .secondary-action,
+  .host-controls .select-sync,
   .host-controls select {
     width: 100%;
     max-width: none;

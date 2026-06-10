@@ -1,5 +1,6 @@
-import { Check, Clipboard, RefreshCcw } from "lucide-react";
+import { Check, Clipboard, Loader2, RefreshCcw } from "lucide-react";
 import type { Issue, Notice, Participant, RoomState, Vote } from "../../../entities/room/model/types";
+import type { PendingSync } from "../../../features/room-session/model/useRoomSession";
 import { useCopyInviteLink } from "../../../features/copy-invite/model/useCopyInviteLink";
 import { InviteCard } from "../../../widgets/invite-card/ui/InviteCard";
 import { RoomSidebar } from "../../../widgets/room-sidebar/ui/RoomSidebar";
@@ -18,6 +19,7 @@ type RoomPageProps = {
   currentVote: Vote | null;
   isHost: boolean;
   notice: Notice | null;
+  pendingSync: PendingSync;
   state: RoomState;
   summary: VoteSummary;
   votersCount: number;
@@ -38,6 +40,7 @@ export function RoomPage({
   currentVote,
   isHost,
   notice,
+  pendingSync,
   state,
   summary,
   votersCount,
@@ -68,7 +71,7 @@ export function RoomPage({
             {copied ? <Check size={19} aria-hidden="true" /> : <Clipboard size={19} aria-hidden="true" />}
           </button>
           <button className="ghost-action" type="button" onClick={onRefreshRoom}>
-            <RefreshCcw size={17} aria-hidden="true" />
+            {pendingSync.refreshRoom ? <Loader2 className="spin" size={17} aria-hidden="true" /> : <RefreshCcw size={17} aria-hidden="true" />}
             Sync
           </button>
         </div>
@@ -82,6 +85,7 @@ export function RoomPage({
           activeVotes={activeVotes}
           isHost={isHost}
           issues={state.issues}
+          pendingSync={pendingSync}
           participants={state.participants}
           onActivateIssue={onActivateIssue}
           onAddIssue={onAddIssue}
@@ -93,6 +97,7 @@ export function RoomPage({
           currentParticipant={currentParticipant}
           currentVote={currentVote}
           isHost={isHost}
+          pendingSync={pendingSync}
           room={state.room}
           summary={summary}
           votersCount={votersCount}

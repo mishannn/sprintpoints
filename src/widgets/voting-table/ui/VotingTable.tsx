@@ -1,5 +1,6 @@
-import { Eye, EyeOff, RefreshCcw } from "lucide-react";
+import { Coffee, Eye, EyeOff, Loader2, RefreshCcw } from "lucide-react";
 import type { Issue, Participant, Room, Vote } from "../../../entities/room/model/types";
+import type { PendingSync } from "../../../features/room-session/model/useRoomSession";
 
 type VoteSummary = {
   average: number;
@@ -13,6 +14,7 @@ type VotingTableProps = {
   currentParticipant: Participant;
   currentVote: Vote | null;
   isHost: boolean;
+  pendingSync: PendingSync;
   room: Room;
   summary: VoteSummary;
   votersCount: number;
@@ -29,6 +31,7 @@ export function VotingTable({
   currentParticipant,
   currentVote,
   isHost,
+  pendingSync,
   room,
   summary,
   votersCount,
@@ -59,8 +62,10 @@ export function VotingTable({
             className={`card-button ${currentVote?.value === card ? "selected" : ""}`}
             onClick={() => onCastVote(card)}
             disabled={!activeIssue || currentParticipant.is_spectator || room.revealed}
+            aria-label={card}
           >
-            {card}
+            {card === "Coffee" ? <Coffee size={34} strokeWidth={2.4} aria-hidden="true" /> : card}
+            {pendingSync.voteValue === card ? <Loader2 className="spin card-sync" size={18} aria-hidden="true" /> : null}
           </button>
         ))}
       </div>
@@ -103,27 +108,40 @@ export function VotingTable({
 
       {isHost ? (
         <div className="host-controls">
-          <button className="primary-action" type="button" onClick={onRevealVotes} disabled={!activeVotes.length || room.revealed}>
-            <Eye size={18} aria-hidden="true" />
+          <button
+            className={`primary-action ${pendingSync.revealVotes ? "is-syncing" : ""}`}
+            type="button"
+            onClick={onRevealVotes}
+            disabled={pendingSync.revealVotes || !activeVotes.length || (room.revealed && !pendingSync.revealVotes)}
+          >
+            {pendingSync.revealVotes ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
             Reveal
           </button>
-          <button className="secondary-action" type="button" onClick={onResetVoting}>
-            <RefreshCcw size={18} aria-hidden="true" />
+          <button
+            className={`secondary-action ${pendingSync.resetVoting ? "is-syncing" : ""}`}
+            type="button"
+            onClick={onResetVoting}
+            disabled={pendingSync.resetVoting}
+          >
+            {pendingSync.resetVoting ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <RefreshCcw size={18} aria-hidden="true" />}
             Reset
           </button>
-          <select
-            value={activeIssue?.estimate ?? ""}
-            onChange={(event) => onSetEstimate(event.target.value)}
-            disabled={!activeIssue}
-            aria-label="Final estimate"
-          >
-            <option value="">Estimate</option>
-            {room.card_set.map((card) => (
-              <option key={card} value={card}>
-                {card}
-              </option>
-            ))}
-          </select>
+          <div className="select-sync">
+            <select
+              value={activeIssue?.estimate ?? ""}
+              onChange={(event) => onSetEstimate(event.target.value)}
+              disabled={!activeIssue}
+              aria-label="Final estimate"
+            >
+              <option value="">Estimate</option>
+              {room.card_set.map((card) => (
+                <option key={card} value={card}>
+                  {card}
+                </option>
+              ))}
+            </select>
+            {pendingSync.estimate ? <Loader2 className="spin select-spinner" size={16} aria-hidden="true" /> : null}
+          </div>
         </div>
       ) : null}
     </section>

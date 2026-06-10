@@ -32,6 +32,7 @@ export function App() {
       currentVote={session.currentVote}
       isHost={session.isHost}
       notice={session.notice}
+      pendingSync={session.pendingSync}
       state={session.state}
       summary={session.summary}
       votersCount={session.voters.length}
