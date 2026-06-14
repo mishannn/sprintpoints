@@ -1,6 +1,6 @@
-# Planning Poker
+# Sprint Points
 
-Planning Poker is a realtime estimation room for agile teams. Create a room, invite teammates with a link, vote privately, reveal estimates together, and keep the story queue visible during refinement or sprint planning.
+Sprint Points is a realtime estimation room for agile teams. Create a room, invite teammates with a link, vote privately, reveal estimates together, and keep the story queue visible during refinement or sprint planning.
 
 It is built as a lightweight product: a static React frontend that can be hosted on GitHub Pages, backed by Supabase Cloud for storage and realtime sync.
 
