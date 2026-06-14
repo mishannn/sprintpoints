@@ -1,8 +1,9 @@
 import { supabase } from "../../../shared/api/supabase";
+import { AppError } from "../../../shared/lib/AppError";
 
 export async function submitVote(roomId: string, issueId: string, participantId: string, value: string) {
   if (!supabase) {
-    throw new Error("Supabase is not configured.");
+    throw new AppError("supabaseMissing");
   }
 
   const { error } = await supabase.from("votes").upsert(
@@ -16,25 +17,25 @@ export async function submitVote(roomId: string, issueId: string, participantId:
   );
 
   if (error) {
-    throw new Error("Could not save your vote.");
+    throw new AppError("saveVote", { cause: error });
   }
 }
 
 export async function revealRoomVotes(roomId: string) {
   if (!supabase) {
-    throw new Error("Supabase is not configured.");
+    throw new AppError("supabaseMissing");
   }
 
   const { error } = await supabase.from("rooms").update({ revealed: true }).eq("id", roomId);
 
   if (error) {
-    throw new Error("Could not reveal votes.");
+    throw new AppError("revealVotes", { cause: error });
   }
 }
 
 export async function resetIssueVoting(roomId: string, issueId: string) {
   if (!supabase) {
-    throw new Error("Supabase is not configured.");
+    throw new AppError("supabaseMissing");
   }
 
   const [{ error: voteError }, { error: roomError }] = await Promise.all([
@@ -43,6 +44,6 @@ export async function resetIssueVoting(roomId: string, issueId: string) {
   ]);
 
   if (voteError || roomError) {
-    throw new Error("Could not reset voting.");
+    throw new AppError("resetVoting", { cause: voteError ?? roomError });
   }
 }

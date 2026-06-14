@@ -1,5 +1,6 @@
 import { supabase } from "../../../shared/api/supabase";
 import type { Issue } from "../../../entities/room/model/types";
+import { AppError } from "../../../shared/lib/AppError";
 
 export type IssueDetailsInput = {
   title: string;
@@ -13,7 +14,7 @@ export type IssueImportInput = IssueDetailsInput & {
 
 export async function createIssue(roomId: string, details: IssueDetailsInput, currentIssues: Issue[]) {
   if (!supabase) {
-    throw new Error("Supabase is not configured.");
+    throw new AppError("supabaseMissing");
   }
 
   const trimmedTitle = details.title.trim();
@@ -31,13 +32,13 @@ export async function createIssue(roomId: string, details: IssueDetailsInput, cu
     .single();
 
   if (error || !issue) {
-    throw new Error("Could not add the story.");
+    throw new AppError("addStory", { cause: error });
   }
 
   const { error: roomError } = await supabase.from("rooms").update({ active_issue_id: issue.id, revealed: false }).eq("id", roomId);
 
   if (roomError) {
-    throw new Error("Could not activate the new story.");
+    throw new AppError("activateNewStory", { cause: roomError });
   }
 
   return issue;
@@ -45,7 +46,7 @@ export async function createIssue(roomId: string, details: IssueDetailsInput, cu
 
 export async function importIssues(roomId: string, details: IssueImportInput[], currentIssues: Issue[], activeIssueId: string | null) {
   if (!supabase) {
-    throw new Error("Supabase is not configured.");
+    throw new AppError("supabaseMissing");
   }
 
   const startPosition = Math.max(0, ...currentIssues.map((issue) => issue.position)) + 1;
@@ -67,7 +68,7 @@ export async function importIssues(roomId: string, details: IssueImportInput[], 
   const { data: issues, error } = await supabase.from("issues").insert(rows).select("*");
 
   if (error || !issues) {
-    throw new Error("Could not import stories.");
+    throw new AppError("importStories", { cause: error });
   }
 
   if (!activeIssueId && issues[0]) {
@@ -77,7 +78,7 @@ export async function importIssues(roomId: string, details: IssueImportInput[], 
       .eq("id", roomId);
 
     if (roomError) {
-      throw new Error("Could not activate the imported story.");
+      throw new AppError("activateImportedStory", { cause: roomError });
     }
   }
 
@@ -86,12 +87,12 @@ export async function importIssues(roomId: string, details: IssueImportInput[], 
 
 export async function updateIssueDetails(issueId: string, details: IssueDetailsInput) {
   if (!supabase) {
-    throw new Error("Supabase is not configured.");
+    throw new AppError("supabaseMissing");
   }
 
   const trimmedTitle = details.title.trim();
   if (!trimmedTitle) {
-    throw new Error("Story title is required.");
+    throw new AppError("storyTitleRequired");
   }
 
   const { data: issue, error } = await supabase
@@ -106,7 +107,7 @@ export async function updateIssueDetails(issueId: string, details: IssueDetailsI
     .single();
 
   if (error || !issue) {
-    throw new Error("Could not update the story.");
+    throw new AppError("updateStory", { cause: error });
   }
 
   return issue;
@@ -114,24 +115,24 @@ export async function updateIssueDetails(issueId: string, details: IssueDetailsI
 
 export async function activateIssue(roomId: string, issueId: string) {
   if (!supabase) {
-    throw new Error("Supabase is not configured.");
+    throw new AppError("supabaseMissing");
   }
 
   const { error } = await supabase.from("rooms").update({ active_issue_id: issueId, revealed: false }).eq("id", roomId);
 
   if (error) {
-    throw new Error("Could not switch story.");
+    throw new AppError("activateStory", { cause: error });
   }
 }
 
 export async function saveIssueEstimate(issueId: string, value: string) {
   if (!supabase) {
-    throw new Error("Supabase is not configured.");
+    throw new AppError("supabaseMissing");
   }
 
   const { error } = await supabase.from("issues").update({ estimate: value }).eq("id", issueId);
 
   if (error) {
-    throw new Error("Could not save the estimate.");
+    throw new AppError("saveEstimate", { cause: error });
   }
 }

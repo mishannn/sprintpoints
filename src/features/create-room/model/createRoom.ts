@@ -1,5 +1,6 @@
 import { DEFAULT_CARDS } from "../../../shared/config/cards";
 import { supabase } from "../../../shared/api/supabase";
+import { AppError } from "../../../shared/lib/AppError";
 import { makeToken } from "../../../shared/lib/token";
 
 type CreateRoomDefaults = {
@@ -10,7 +11,7 @@ type CreateRoomDefaults = {
 
 export async function createPlanningRoom(roomName: string, participantName: string, defaults: CreateRoomDefaults) {
   if (!supabase) {
-    throw new Error("Supabase is not configured.");
+    throw new AppError("supabaseMissing");
   }
 
   const hostToken = makeToken();
@@ -23,7 +24,7 @@ export async function createPlanningRoom(roomName: string, participantName: stri
     .single();
 
   if (roomError || !room) {
-    throw new Error("Could not create a room.");
+    throw new AppError("createRoomApi", { cause: roomError });
   }
 
   const { data: participant, error: participantError } = await supabase
@@ -33,7 +34,7 @@ export async function createPlanningRoom(roomName: string, participantName: stri
     .single();
 
   if (participantError || !participant) {
-    throw new Error("Could not add the facilitator.");
+    throw new AppError("addFacilitator", { cause: participantError });
   }
 
   const { data: issue, error: issueError } = await supabase
@@ -43,7 +44,7 @@ export async function createPlanningRoom(roomName: string, participantName: stri
     .single();
 
   if (issueError || !issue) {
-    throw new Error("Could not create the first story.");
+    throw new AppError("createFirstStory", { cause: issueError });
   }
 
   const { data: updatedRoom, error: updateError } = await supabase
@@ -54,7 +55,7 @@ export async function createPlanningRoom(roomName: string, participantName: stri
     .single();
 
   if (updateError || !updatedRoom) {
-    throw new Error("Could not activate the first story.");
+    throw new AppError("activateNewStory", { cause: updateError });
   }
 
   return {

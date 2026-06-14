@@ -1,22 +1,23 @@
 import { supabase } from "../../../shared/api/supabase";
+import { AppError } from "../../../shared/lib/AppError";
 import { normalizeCode } from "../../../shared/lib/roomCode";
 import { makeToken } from "../../../shared/lib/token";
 
 export async function joinPlanningRoom(code: string, name: string, isSpectator: boolean) {
   if (!supabase) {
-    throw new Error("Supabase is not configured.");
+    throw new AppError("supabaseMissing");
   }
 
   const normalizedCode = normalizeCode(code);
 
   if (!normalizedCode || !name.trim()) {
-    throw new Error("Enter a room code and your name.");
+    throw new AppError("joinRoomRequired");
   }
 
   const { data: room, error: roomError } = await supabase.from("rooms").select("*").eq("code", normalizedCode).single();
 
   if (roomError || !room) {
-    throw new Error("Room not found.");
+    throw new AppError("roomNotFound", { cause: roomError });
   }
 
   const token = makeToken();
@@ -27,7 +28,7 @@ export async function joinPlanningRoom(code: string, name: string, isSpectator: 
     .single();
 
   if (participantError || !participant) {
-    throw new Error("Could not join the room.");
+    throw new AppError("joinRoom", { cause: participantError });
   }
 
   return {

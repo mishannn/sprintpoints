@@ -9,7 +9,8 @@ import {
   type CsvData,
   type JiraImportMapping,
 } from "../../../features/manage-issues/model/jiraCsv";
-import { translateErrorMessage, useI18n } from "../../../shared/i18n";
+import { translateError, useI18n } from "../../../shared/i18n";
+import { AppError } from "../../../shared/lib/AppError";
 
 type ImportIssuesModalProps = {
   isOpen: boolean;
@@ -85,7 +86,7 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
       const data = parseCsv(await file.text());
 
       if (data.headers.length === 0) {
-        throw new Error(t("error.csvHeaderEmpty"));
+        throw new AppError("csvHeaderEmpty");
       }
 
       setCsvData(data);
@@ -96,7 +97,7 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
       setCsvData(null);
       setMapping(emptyMapping);
       setFileName("");
-      setError(parseError instanceof Error ? translateErrorMessage(parseError.message, t) : t("error.readCsv"));
+      setError(translateError(parseError, t, t("error.readCsv")));
     }
   }
 

@@ -15,7 +15,7 @@ import { loadRoomState } from "../../../entities/room/model/roomApi";
 import type { Issue, Notice, Participant, RoomState } from "../../../entities/room/model/types";
 import { distribution, voteSummary } from "../../../entities/room/model/voteStats";
 import { hasSupabaseConfig, supabase } from "../../../shared/api/supabase";
-import { translateErrorMessage, useI18n } from "../../../shared/i18n";
+import { translateError, useI18n } from "../../../shared/i18n";
 import { hostKey, participantKey } from "../../../shared/lib/roomStorage";
 import { getJoinCodeFromUrl, setRoomUrl } from "../../../shared/lib/roomUrl";
 
@@ -68,7 +68,7 @@ export function useRoomSession() {
   const voteGroups = state?.room.revealed ? distribution(activeVotes) : {};
 
   const showError = useCallback((error: unknown, fallbackMessage: string) => {
-    setNotice({ kind: "error", message: error instanceof Error ? translateErrorMessage(error.message, t) : fallbackMessage });
+    setNotice({ kind: "error", message: translateError(error, t, fallbackMessage) });
   }, [t]);
 
   const setPending = useCallback((patch: Partial<PendingSync>) => {

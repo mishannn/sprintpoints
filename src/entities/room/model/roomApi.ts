@@ -1,16 +1,17 @@
 import { supabase } from "../../../shared/api/supabase";
+import { AppError } from "../../../shared/lib/AppError";
 import { normalizeCode } from "../../../shared/lib/roomCode";
 import type { RoomState } from "./types";
 
 export async function loadRoomState(code: string): Promise<RoomState> {
   if (!supabase) {
-    throw new Error("Supabase is not configured.");
+    throw new AppError("supabaseMissing");
   }
 
   const { data: room, error: roomError } = await supabase.from("rooms").select("*").eq("code", normalizeCode(code)).single();
 
   if (roomError || !room) {
-    throw new Error("Room not found.");
+    throw new AppError("roomNotFound", { cause: roomError });
   }
 
   const [{ data: participants, error: participantsError }, { data: issues, error: issuesError }, { data: votes, error: votesError }] =
@@ -21,7 +22,7 @@ export async function loadRoomState(code: string): Promise<RoomState> {
     ]);
 
   if (participantsError || issuesError || votesError) {
-    throw new Error("Could not load the room state.");
+    throw new AppError("loadRoomState", { cause: participantsError ?? issuesError ?? votesError });
   }
 
   return {

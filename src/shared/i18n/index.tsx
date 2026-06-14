@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { isAppError } from "../lib/AppError";
 
 export type Language = "en" | "ru";
 
@@ -241,29 +242,6 @@ const translations: Record<Language, Record<string, TranslationValue>> = {
   },
 };
 
-const errorMessageKeys: Record<string, string> = {
-  "Could not activate the first story.": "error.activateNewStory",
-  "Could not activate the imported story.": "error.activateImportedStory",
-  "Could not activate the new story.": "error.activateNewStory",
-  "Could not add the facilitator.": "error.addFacilitator",
-  "Could not add the story.": "error.addStory",
-  "Could not create a room.": "error.createRoomApi",
-  "Could not create the first story.": "error.createFirstStory",
-  "Could not import stories.": "error.importStories",
-  "Could not join the room.": "error.joinRoom",
-  "Could not load the room state.": "error.loadRoomState",
-  "Could not reset voting.": "error.resetVoting",
-  "Could not reveal votes.": "error.revealVotes",
-  "Could not save the estimate.": "error.saveEstimate",
-  "Could not save your vote.": "error.saveVote",
-  "Could not switch story.": "error.activateStory",
-  "Could not update the story.": "error.updateStory",
-  "Enter a room code and your name.": "error.joinRoomRequired",
-  "Room not found.": "error.roomNotFound",
-  "Story title is required.": "error.storyTitleRequired",
-  "Supabase is not configured.": "error.supabaseMissing",
-};
-
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 function getRussianPlural(count: number, one: string, few: string, many: string) {
@@ -300,8 +278,12 @@ function formatTranslation(value: TranslationValue, params: TranslationParams) {
   return value.replace(/\{(\w+)\}/g, (match, key) => String(params[key] ?? match));
 }
 
-export function translateErrorMessage(message: string, t: I18nContextValue["t"]) {
-  return t(errorMessageKeys[message] ?? message);
+export function translateError(error: unknown, t: I18nContextValue["t"], fallbackMessage: string) {
+  if (isAppError(error)) {
+    return t(`error.${error.code}`);
+  }
+
+  return fallbackMessage;
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
