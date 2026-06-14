@@ -3,6 +3,8 @@ import type { Issue, Notice, Participant, RoomState, Vote } from "../../../entit
 import type { IssueDetailsInput, IssueImportInput } from "../../../features/manage-issues/model/issues";
 import type { PendingSync } from "../../../features/room-session/model/useRoomSession";
 import { useCopyInviteLink } from "../../../features/copy-invite/model/useCopyInviteLink";
+import { LanguageSelector } from "../../../shared/i18n/LanguageSelector";
+import { useI18n } from "../../../shared/i18n";
 import { InviteCard } from "../../../widgets/invite-card/ui/InviteCard";
 import { RoomSidebar } from "../../../widgets/room-sidebar/ui/RoomSidebar";
 import { VotingTable } from "../../../widgets/voting-table/ui/VotingTable";
@@ -58,6 +60,7 @@ export function RoomPage({
   onRevealVotes,
   onSetEstimate,
 }: RoomPageProps) {
+  const { t } = useI18n();
   const { copied, copyInviteLink } = useCopyInviteLink();
 
   const handleCopyInviteLink = () => {
@@ -68,16 +71,23 @@ export function RoomPage({
     <main className="workspace">
       <header className="topbar">
         <div>
-          <span className="eyebrow">Room {state.room.code}</span>
+          <span className="eyebrow">{t("common.room", { code: state.room.code })}</span>
           <h1>{state.room.name}</h1>
         </div>
         <div className="topbar-actions">
-          <button className="icon-button" type="button" onClick={handleCopyInviteLink} title="Copy invite link" aria-label="Copy invite link">
+          <LanguageSelector />
+          <button
+            className="icon-button"
+            type="button"
+            onClick={handleCopyInviteLink}
+            title={t("action.copyInviteLink")}
+            aria-label={t("action.copyInviteLink")}
+          >
             {copied ? <Check size={19} aria-hidden="true" /> : <Clipboard size={19} aria-hidden="true" />}
           </button>
           <button className="ghost-action" type="button" onClick={onRefreshRoom}>
             {pendingSync.refreshRoom ? <Loader2 className="spin" size={17} aria-hidden="true" /> : <RefreshCcw size={17} aria-hidden="true" />}
-            Sync
+            {t("action.sync")}
           </button>
         </div>
       </header>

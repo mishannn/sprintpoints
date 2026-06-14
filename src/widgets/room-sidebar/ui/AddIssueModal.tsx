@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Loader2, Pencil, Plus, X } from "lucide-react";
 import type { Issue } from "../../../entities/room/model/types";
 import type { IssueDetailsInput } from "../../../features/manage-issues/model/issues";
+import { useI18n } from "../../../shared/i18n";
 
 type AddIssueModalProps = {
   issue: Issue | null;
@@ -29,6 +30,7 @@ function getInitialIssue(issue: Issue | null): IssueDetailsInput {
 }
 
 export function AddIssueModal({ issue: editingIssue, isOpen, isSaving, onClose, onSubmit }: AddIssueModalProps) {
+  const { t } = useI18n();
   const [issue, setIssue] = useState<IssueDetailsInput>(emptyIssue);
   const isEditing = Boolean(editingIssue);
 
@@ -68,47 +70,47 @@ export function AddIssueModal({ issue: editingIssue, isOpen, isSaving, onClose, 
       <section className="modal-panel" role="dialog" aria-modal="true" aria-labelledby="add-story-title" onMouseDown={(event) => event.stopPropagation()}>
         <div className="modal-header">
           <div>
-            <span className="eyebrow">Story</span>
-            <h2 id="add-story-title">{isEditing ? "Edit story" : "Add story"}</h2>
+            <span className="eyebrow">{t("common.story")}</span>
+            <h2 id="add-story-title">{isEditing ? t("modal.editStoryTitle") : t("modal.addStoryTitle")}</h2>
           </div>
-          <button className="icon-button" type="button" onClick={onClose} aria-label="Close add story form">
+          <button className="icon-button" type="button" onClick={onClose} aria-label={t("action.closeAddStoryForm")}>
             <X size={20} aria-hidden="true" />
           </button>
         </div>
 
         <form className="story-form" onSubmit={handleSubmit}>
           <label>
-            Title
+            {t("common.title")}
             <input
               value={issue.title}
               onChange={(event) => setIssue((current) => ({ ...current, title: event.target.value }))}
-              placeholder="Good task"
+              placeholder={t("placeholder.title")}
               autoFocus
               required
             />
           </label>
           <label>
-            Link
+            {t("common.link")}
             <input
               value={issue.link}
               onChange={(event) => setIssue((current) => ({ ...current, link: event.target.value }))}
-              placeholder="https://jira.example.org/browse/TASK-200"
+              placeholder={t("placeholder.link")}
               inputMode="url"
             />
           </label>
           <label>
-            Description
+            {t("common.description")}
             <textarea
               value={issue.description}
               onChange={(event) => setIssue((current) => ({ ...current, description: event.target.value }))}
-              placeholder="Perfect long description"
+              placeholder={t("placeholder.description")}
               rows={5}
             />
           </label>
 
           <div className="modal-actions">
             <button className="ghost-action" type="button" onClick={onClose}>
-              Cancel
+              {t("action.cancel")}
             </button>
             <button className={`primary-action ${isSaving ? "is-syncing" : ""}`} type="submit" disabled={isSaving}>
               {isSaving ? (
@@ -118,7 +120,7 @@ export function AddIssueModal({ issue: editingIssue, isOpen, isSaving, onClose, 
               ) : (
                 <Plus size={18} aria-hidden="true" />
               )}
-              {isEditing ? "Save story" : "Add story"}
+              {isEditing ? t("action.saveStory") : t("action.addStory")}
             </button>
           </div>
         </form>

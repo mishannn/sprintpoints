@@ -9,6 +9,7 @@ import {
   type CsvData,
   type JiraImportMapping,
 } from "../../../features/manage-issues/model/jiraCsv";
+import { translateErrorMessage, useI18n } from "../../../shared/i18n";
 
 type ImportIssuesModalProps = {
   isOpen: boolean;
@@ -30,11 +31,12 @@ function parseSelectValue(value: string) {
   return value === "" ? null : Number(value);
 }
 
-function formatOptionLabel(header: string, index: number) {
-  return `${index + 1}. ${header || "Unnamed column"}`;
+function formatOptionLabel(header: string, index: number, unnamedColumnLabel: string) {
+  return `${index + 1}. ${header || unnamedColumnLabel}`;
 }
 
 export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: ImportIssuesModalProps) {
+  const { t } = useI18n();
   const [csvData, setCsvData] = useState<CsvData | null>(null);
   const [mapping, setMapping] = useState<JiraImportMapping>(emptyMapping);
   const [fileName, setFileName] = useState("");
@@ -83,7 +85,7 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
       const data = parseCsv(await file.text());
 
       if (data.headers.length === 0) {
-        throw new Error("CSV header row is empty.");
+        throw new Error(t("error.csvHeaderEmpty"));
       }
 
       setCsvData(data);
@@ -94,7 +96,7 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
       setCsvData(null);
       setMapping(emptyMapping);
       setFileName("");
-      setError(parseError instanceof Error ? parseError.message : "Could not read the CSV file.");
+      setError(parseError instanceof Error ? translateErrorMessage(parseError.message, t) : t("error.readCsv"));
     }
   }
 
@@ -106,12 +108,12 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
     event.preventDefault();
 
     if (mapping.title === null) {
-      setError("Choose a column for Title.");
+      setError(t("error.chooseTitleColumn"));
       return;
     }
 
     if (mappedIssues.length === 0) {
-      setError("No stories found with the selected mapping.");
+      setError(t("error.noMappedStories"));
       return;
     }
 
@@ -136,10 +138,10 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
       >
         <div className="modal-header">
           <div>
-            <span className="eyebrow">CSV</span>
-            <h2 id="import-stories-title">Import stories</h2>
+            <span className="eyebrow">{t("common.csv")}</span>
+            <h2 id="import-stories-title">{t("modal.importStoriesTitle")}</h2>
           </div>
-          <button className="icon-button" type="button" onClick={close} aria-label="Close import form">
+          <button className="icon-button" type="button" onClick={close} aria-label={t("action.closeImportForm")}>
             <X size={20} aria-hidden="true" />
           </button>
         </div>
@@ -149,7 +151,7 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
             <input id={fileInputId} className="visually-hidden-input" type="file" accept=".csv,text/csv" onChange={handleFileChange} />
             <label className="csv-file-button" htmlFor={fileInputId}>
               <FileUp size={18} aria-hidden="true" />
-              Choose CSV file
+              {t("action.chooseCsvFile")}
             </label>
           </div>
 
@@ -160,45 +162,45 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
             <>
               <div className="mapping-grid">
                 <label>
-                  Title
+                  {t("common.title")}
                   <select value={mapping.title ?? ""} onChange={(event) => updateMapping("title", event.target.value)} required>
-                    <option value="">Choose column</option>
+                    <option value="">{t("action.chooseColumn")}</option>
                     {csvData.headers.map((header, index) => (
                       <option key={`${index}-${header}`} value={index}>
-                        {formatOptionLabel(header, index)}
+                        {formatOptionLabel(header, index, t("import.unnamedColumn"))}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label>
-                  Description
+                  {t("common.description")}
                   <select value={mapping.description ?? ""} onChange={(event) => updateMapping("description", event.target.value)}>
-                    <option value="">Skip</option>
+                    <option value="">{t("action.skip")}</option>
                     {csvData.headers.map((header, index) => (
                       <option key={`${index}-${header}`} value={index}>
-                        {formatOptionLabel(header, index)}
+                        {formatOptionLabel(header, index, t("import.unnamedColumn"))}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label>
-                  Link
+                  {t("common.link")}
                   <select value={mapping.link ?? ""} onChange={(event) => updateMapping("link", event.target.value)}>
-                    <option value="">Skip</option>
+                    <option value="">{t("action.skip")}</option>
                     {csvData.headers.map((header, index) => (
                       <option key={`${index}-${header}`} value={index}>
-                        {formatOptionLabel(header, index)}
+                        {formatOptionLabel(header, index, t("import.unnamedColumn"))}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label>
-                  Estimate
+                  {t("common.estimate")}
                   <select value={mapping.estimate ?? ""} onChange={(event) => updateMapping("estimate", event.target.value)}>
-                    <option value="">Skip</option>
+                    <option value="">{t("action.skip")}</option>
                     {csvData.headers.map((header, index) => (
                       <option key={`${index}-${header}`} value={index}>
-                        {formatOptionLabel(header, index)}
+                        {formatOptionLabel(header, index, t("import.unnamedColumn"))}
                       </option>
                     ))}
                   </select>
@@ -207,13 +209,13 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
 
               <div className="import-preview">
                 <div className="import-preview-header">
-                  <strong>{mappedIssues.length} stories</strong>
-                  <span>{csvData.rows.length} CSV rows</span>
+                  <strong>{t("common.storiesCount", { count: mappedIssues.length })}</strong>
+                  <span>{t("common.csvRows", { count: csvData.rows.length })}</span>
                 </div>
                 {previewRows.map((issue, index) => (
                   <div className="import-preview-row" key={`${issue.title}-${index}`}>
                     <strong>{issue.title}</strong>
-                    <span>{issue.estimate || issue.link || issue.description || "No optional fields"}</span>
+                    <span>{issue.estimate || issue.link || issue.description || t("common.noOptionalFields")}</span>
                   </div>
                 ))}
               </div>
@@ -222,11 +224,11 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
 
           <div className="modal-actions">
             <button className="ghost-action" type="button" onClick={close}>
-              Cancel
+              {t("action.cancel")}
             </button>
             <button className={`primary-action ${isSaving ? "is-syncing" : ""}`} type="submit" disabled={isSaving || !csvData}>
               {isSaving ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <FileUp size={18} aria-hidden="true" />}
-              Import
+              {t("action.import")}
             </button>
           </div>
         </form>

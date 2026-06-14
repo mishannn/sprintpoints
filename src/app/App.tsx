@@ -1,4 +1,5 @@
 import { hasSupabaseConfig } from "../shared/api/supabase";
+import { I18nProvider } from "../shared/i18n";
 import { getJoinCodeFromUrl } from "../shared/lib/roomUrl";
 import { useRoomSession } from "../features/room-session/model/useRoomSession";
 import { LobbyPage } from "../pages/lobby/ui/LobbyPage";
@@ -6,6 +7,14 @@ import { RoomPage } from "../pages/room/ui/RoomPage";
 import { SetupRequiredPage } from "../pages/setup-required/ui/SetupRequiredPage";
 
 export function App() {
+  return (
+    <I18nProvider>
+      <AppContent />
+    </I18nProvider>
+  );
+}
+
+function AppContent() {
   const session = useRoomSession();
 
   if (!hasSupabaseConfig) {

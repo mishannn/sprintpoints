@@ -54,10 +54,22 @@ code {
 .landing {
   display: grid;
   grid-template-columns: minmax(280px, 0.9fr) minmax(340px, 1.1fr);
+  grid-template-rows: auto 1fr;
   gap: 36px;
-  align-items: center;
+  align-items: start;
   max-width: 1180px;
   margin: 0 auto;
+}
+
+.landing-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 48px;
+  color: #245b56;
+  font-weight: 800;
 }
 
 .intro h1,
@@ -81,17 +93,16 @@ code {
   line-height: 1.6;
 }
 
-.brand-row {
-  display: flex;
+.brand-identity {
+  display: inline-flex;
+  min-width: 0;
   align-items: center;
   gap: 12px;
-  margin-bottom: 28px;
-  color: #245b56;
-  font-weight: 800;
 }
 
 .brand-mark {
   display: inline-grid;
+  flex: 0 0 auto;
   width: 48px;
   height: 48px;
   place-items: center;
@@ -99,6 +110,50 @@ code {
   color: #ffffff;
   background: #156f67;
   box-shadow: 0 14px 28px rgb(21 111 103 / 22%);
+}
+
+.language-selector {
+  display: inline-flex;
+  width: auto;
+  min-width: 172px;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  border: 1px solid #c8d5de;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #1f343f;
+  padding: 0 10px;
+}
+
+.language-selector select {
+  width: 100%;
+  min-height: 40px;
+  border: 0;
+  background: transparent;
+  padding: 0 22px 0 0;
+  color: inherit;
+  font-weight: 800;
+}
+
+.language-selector select:focus {
+  box-shadow: none;
+}
+
+.language-selector:focus-within {
+  border-color: #156f67;
+  box-shadow: 0 0 0 3px rgb(21 111 103 / 14%);
+}
+
+.visually-hidden-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .feature-strip {
@@ -138,6 +193,14 @@ code {
 .setup-panel {
   max-width: 620px;
   padding: 34px;
+}
+
+.setup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
 }
 
 .setup-panel p {
@@ -961,6 +1024,15 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .landing {
+    row-gap: 28px;
+  }
+
+  .landing-header {
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
   .sidebar {
     max-height: none;
   }
@@ -982,7 +1054,12 @@ textarea {
   }
 
   .topbar-actions {
+    flex-wrap: wrap;
     justify-content: flex-start;
+  }
+
+  .language-selector {
+    min-width: 172px;
   }
 
   .cards-grid {

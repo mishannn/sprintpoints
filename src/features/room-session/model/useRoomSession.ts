@@ -15,6 +15,7 @@ import { loadRoomState } from "../../../entities/room/model/roomApi";
 import type { Issue, Notice, Participant, RoomState } from "../../../entities/room/model/types";
 import { distribution, voteSummary } from "../../../entities/room/model/voteStats";
 import { hasSupabaseConfig, supabase } from "../../../shared/api/supabase";
+import { translateErrorMessage, useI18n } from "../../../shared/i18n";
 import { hostKey, participantKey } from "../../../shared/lib/roomStorage";
 import { getJoinCodeFromUrl, setRoomUrl } from "../../../shared/lib/roomUrl";
 
@@ -41,6 +42,7 @@ const idlePendingSync: PendingSync = {
 };
 
 export function useRoomSession() {
+  const { t } = useI18n();
   const [state, setState] = useState<RoomState | null>(null);
   const [currentParticipant, setCurrentParticipant] = useState<Participant | null>(null);
   const [hostToken, setHostToken] = useState<string | null>(null);
@@ -66,8 +68,8 @@ export function useRoomSession() {
   const voteGroups = state?.room.revealed ? distribution(activeVotes) : {};
 
   const showError = useCallback((error: unknown, fallbackMessage: string) => {
-    setNotice({ kind: "error", message: error instanceof Error ? error.message : fallbackMessage });
-  }, []);
+    setNotice({ kind: "error", message: error instanceof Error ? translateErrorMessage(error.message, t) : fallbackMessage });
+  }, [t]);
 
   const setPending = useCallback((patch: Partial<PendingSync>) => {
     setPendingSync((current) => ({ ...current, ...patch }));
@@ -96,9 +98,9 @@ export function useRoomSession() {
     try {
       await loadRoom(state.room.code);
     } catch (error) {
-      showError(error, "Could not refresh the room.");
+      showError(error, t("error.refreshRoom"));
     }
-  }, [loadRoom, showError, state]);
+  }, [loadRoom, showError, state, t]);
 
   const refreshRoom = useCallback(async () => {
     setPending({ refreshRoom: true });
@@ -117,9 +119,9 @@ export function useRoomSession() {
 
     setLoading(true);
     loadRoom(code)
-      .catch((error) => showError(error, "Could not open room."))
+      .catch((error) => showError(error, t("error.loadRoom")))
       .finally(() => setLoading(false));
-  }, [loadRoom, showError]);
+  }, [loadRoom, showError, t]);
 
   useEffect(() => {
     if (!state || !supabase) {
@@ -162,7 +164,11 @@ export function useRoomSession() {
     setNotice(null);
 
     try {
-      const result = await createPlanningRoom(roomName, participantName);
+      const result = await createPlanningRoom(roomName, participantName, {
+        facilitatorName: t("fallback.facilitator"),
+        firstStoryTitle: t("fallback.firstStory"),
+        roomName: t("fallback.roomName"),
+      });
 
       localStorage.setItem(participantKey(result.state.room.id), result.participantToken);
       localStorage.setItem(hostKey(result.state.room.id), result.hostToken);
@@ -170,13 +176,13 @@ export function useRoomSession() {
       setHostToken(result.hostToken);
       setState(result.state);
       setRoomUrl(result.state.room.code);
-      setNotice({ kind: "success", message: "Room created." });
+      setNotice({ kind: "success", message: t("notice.roomCreated") });
     } catch (error) {
-      showError(error, "Could not create the room.");
+      showError(error, t("error.createRoom"));
     } finally {
       setLoading(false);
     }
-  }, [showError]);
+  }, [showError, t]);
 
   const joinRoom = useCallback(async (code: string, name: string, isSpectator: boolean) => {
     setLoading(true);
@@ -189,13 +195,13 @@ export function useRoomSession() {
       setCurrentParticipant(result.participant);
       setRoomUrl(result.room.code);
       await loadRoom(result.room.code);
-      setNotice({ kind: "success", message: "Joined the room." });
+      setNotice({ kind: "success", message: t("notice.joinedRoom") });
     } catch (error) {
-      showError(error, "Could not join the room.");
+      showError(error, t("error.joinRoom"));
     } finally {
       setLoading(false);
     }
-  }, [loadRoom, showError]);
+  }, [loadRoom, showError, t]);
 
   const castVote = useCallback(async (value: string) => {
     if (!state || !activeIssue || !currentParticipant || currentParticipant.is_spectator) {
@@ -257,11 +263,11 @@ export function useRoomSession() {
           };
         });
       }
-      showError(error, "Could not save your vote.");
+      showError(error, t("error.saveVote"));
     } finally {
       setPendingSync((current) => (voteSyncId.current === requestId ? { ...current, voteValue: null } : current));
     }
-  }, [activeIssue, currentParticipant, currentVote, loadRoom, showError, state, setPending]);
+  }, [activeIssue, currentParticipant, currentVote, loadRoom, showError, state, setPending, t]);
 
   const revealVotes = useCallback(async () => {
     if (!state || !isHost) {
@@ -279,11 +285,11 @@ export function useRoomSession() {
       await loadRoom(state.room.code);
     } catch (error) {
       setState((current) => (current ? { ...current, room: { ...current.room, revealed: wasRevealed } } : current));
-      showError(error, "Could not reveal votes.");
+      showError(error, t("error.revealVotes"));
     } finally {
       setPending({ revealVotes: false });
     }
-  }, [isHost, loadRoom, setPending, showError, state]);
+  }, [isHost, loadRoom, setPending, showError, state, t]);
 
   const resetVoting = useCallback(async () => {
     if (!state || !activeIssue || !isHost) {
@@ -318,11 +324,11 @@ export function useRoomSession() {
             }
           : current,
       );
-      showError(error, "Could not reset voting.");
+      showError(error, t("error.resetVoting"));
     } finally {
       setPending({ resetVoting: false });
     }
-  }, [activeIssue, isHost, loadRoom, setPending, showError, state]);
+  }, [activeIssue, isHost, loadRoom, setPending, showError, state, t]);
 
   const addIssue = useCallback(async (details: IssueDetailsInput) => {
     if (!state || !isHost) {
@@ -348,12 +354,12 @@ export function useRoomSession() {
       }
       return Boolean(issue);
     } catch (error) {
-      showError(error, "Could not add the story.");
+      showError(error, t("error.addStory"));
       return false;
     } finally {
       setPending({ addIssue: false });
     }
-  }, [isHost, loadRoom, setPending, showError, state]);
+  }, [isHost, loadRoom, setPending, showError, state, t]);
 
   const editIssue = useCallback(async (issue: Issue, details: IssueDetailsInput) => {
     if (!state || !isHost) {
@@ -400,12 +406,12 @@ export function useRoomSession() {
             }
           : current,
       );
-      showError(error, "Could not update the story.");
+      showError(error, t("error.updateStory"));
       return false;
     } finally {
       setPending({ editIssueId: null });
     }
-  }, [isHost, loadRoom, setPending, showError, state]);
+  }, [isHost, loadRoom, setPending, showError, state, t]);
 
   const importIssues = useCallback(async (details: IssueImportInput[]) => {
     if (!state || !isHost) {
@@ -418,15 +424,15 @@ export function useRoomSession() {
     try {
       const issues = await importIssuesRequest(state.room.id, details, state.issues, state.room.active_issue_id);
       await loadRoom(state.room.code);
-      setNotice({ kind: "success", message: `Imported ${issues.length} ${issues.length === 1 ? "story" : "stories"}.` });
+      setNotice({ kind: "success", message: t("notice.importedStories", { count: issues.length }) });
       return issues.length > 0;
     } catch (error) {
-      showError(error, "Could not import stories.");
+      showError(error, t("error.importStories"));
       return false;
     } finally {
       setPending({ addIssue: false });
     }
-  }, [isHost, loadRoom, setPending, showError, state]);
+  }, [isHost, loadRoom, setPending, showError, state, t]);
 
   const activateIssue = useCallback(async (issue: Issue) => {
     if (!state || !isHost) {
@@ -465,11 +471,11 @@ export function useRoomSession() {
             : current,
         );
       }
-      showError(error, "Could not switch story.");
+      showError(error, t("error.activateStory"));
     } finally {
       setPendingSync((current) => (activeIssueSyncId.current === requestId ? { ...current, activeIssueId: null } : current));
     }
-  }, [isHost, loadRoom, setPending, showError, state]);
+  }, [isHost, loadRoom, setPending, showError, state, t]);
 
   const setEstimate = useCallback(async (value: string) => {
     if (!activeIssue || !isHost) {
@@ -509,11 +515,11 @@ export function useRoomSession() {
             : current,
         );
       }
-      showError(error, "Could not save the estimate.");
+      showError(error, t("error.saveEstimate"));
     } finally {
       setPendingSync((current) => (estimateSyncId.current === requestId ? { ...current, estimate: false } : current));
     }
-  }, [activeIssue, isHost, loadRoom, setPending, showError, state]);
+  }, [activeIssue, isHost, loadRoom, setPending, showError, state, t]);
 
   return {
     state,

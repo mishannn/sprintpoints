@@ -1,16 +1,23 @@
 import { Sparkles } from "lucide-react";
+import { LanguageSelector } from "../../../shared/i18n/LanguageSelector";
+import { useI18n } from "../../../shared/i18n";
 
 export function SetupRequiredPage() {
+  const { t } = useI18n();
+
   return (
     <main className="shell centered">
       <section className="setup-panel">
-        <div className="brand-mark">
-          <Sparkles size={26} aria-hidden="true" />
+        <div className="setup-header">
+          <div className="brand-mark">
+            <Sparkles size={26} aria-hidden="true" />
+          </div>
+          <LanguageSelector />
         </div>
-        <h1>Connect Supabase to start planning</h1>
+        <h1>{t("setup.heading")}</h1>
         <p>
-          Create a cloud Supabase project, run the SQL migration in <code>supabase/migrations</code>, then copy{" "}
-          <code>.env.example</code> to <code>.env</code> and set your project URL and anon key.
+          {t("setup.instructionsIntro")} <code>supabase/migrations</code>, {t("setup.instructionsAfterMigration")}{" "}
+          <code>.env.example</code> {t("setup.instructionsTo")} <code>.env</code> {t("setup.instructionsOutro")}
         </p>
       </section>
     </main>

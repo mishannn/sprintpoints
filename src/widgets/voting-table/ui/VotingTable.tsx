@@ -1,6 +1,7 @@
 import { Coffee, ExternalLink, Eye, EyeOff, Loader2, RefreshCcw } from "lucide-react";
 import type { Issue, Participant, Room, Vote } from "../../../entities/room/model/types";
 import type { PendingSync } from "../../../features/room-session/model/useRoomSession";
+import { useI18n } from "../../../shared/i18n";
 
 type VoteSummary = {
   average: number;
@@ -45,6 +46,7 @@ export function VotingTable({
   onResetVoting,
   onSetEstimate,
 }: VotingTableProps) {
+  const { t } = useI18n();
   const activeDescription = activeIssue?.description ?? "";
   const activeLink = activeIssue?.link ?? "";
   const activeStoryLink = activeLink.trim() ? getExternalHref(activeLink.trim()) : null;
@@ -53,12 +55,12 @@ export function VotingTable({
     <section className="table">
       <div className="story-header">
         <div>
-          <span className="eyebrow">Active story</span>
-          <h2>{activeIssue?.title ?? "No story selected"}</h2>
+          <span className="eyebrow">{t("label.activeStory")}</span>
+          <h2>{activeIssue?.title ?? t("state.noStorySelected")}</h2>
         </div>
         <div className="story-state">
           {room.revealed ? <Eye size={18} aria-hidden="true" /> : <EyeOff size={18} aria-hidden="true" />}
-          {room.revealed ? "Revealed" : "Voting"}
+          {room.revealed ? t("state.revealed") : t("state.voting")}
         </div>
       </div>
 
@@ -66,7 +68,7 @@ export function VotingTable({
         <div className="story-details">
           {activeStoryLink ? (
             <div className="story-detail-row">
-              <span>Link</span>
+              <span>{t("common.link")}</span>
               <a href={activeStoryLink} target="_blank" rel="noreferrer">
                 {activeLink}
                 <ExternalLink size={16} aria-hidden="true" />
@@ -75,14 +77,14 @@ export function VotingTable({
           ) : null}
           {activeDescription ? (
             <div className="story-detail-row">
-              <span>Description</span>
+              <span>{t("common.description")}</span>
               <p>{activeDescription}</p>
             </div>
           ) : null}
         </div>
       ) : null}
 
-      <div className="cards-grid" aria-label="Vote cards">
+      <div className="cards-grid" aria-label={t("aria.voteCards")}>
         {room.card_set.map((card) => (
           <button
             key={card}
@@ -100,17 +102,17 @@ export function VotingTable({
 
       <div className="status-grid">
         <div className="metric">
-          <span>Votes</span>
+          <span>{t("common.votes")}</span>
           <strong>
             {activeVotes.length}/{votersCount}
           </strong>
         </div>
         <div className="metric">
-          <span>Average</span>
+          <span>{t("common.average")}</span>
           <strong>{summary ? summary.average.toFixed(1) : "-"}</strong>
         </div>
         <div className="metric">
-          <span>Range</span>
+          <span>{t("common.range")}</span>
           <strong>{summary ? `${summary.min}-${summary.max}` : "-"}</strong>
         </div>
       </div>
@@ -130,7 +132,7 @@ export function VotingTable({
       ) : (
         <div className="hidden-results">
           <EyeOff size={24} aria-hidden="true" />
-          Votes stay hidden until the facilitator reveals them.
+          {t("voting.hiddenResults")}
         </div>
       )}
 
@@ -143,7 +145,7 @@ export function VotingTable({
             disabled={pendingSync.revealVotes || !activeVotes.length || (room.revealed && !pendingSync.revealVotes)}
           >
             {pendingSync.revealVotes ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
-            Reveal
+            {t("action.reveal")}
           </button>
           <button
             className={`secondary-action ${pendingSync.resetVoting ? "is-syncing" : ""}`}
@@ -152,16 +154,16 @@ export function VotingTable({
             disabled={pendingSync.resetVoting}
           >
             {pendingSync.resetVoting ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <RefreshCcw size={18} aria-hidden="true" />}
-            Reset
+            {t("action.reset")}
           </button>
           <div className="select-sync">
             <select
               value={activeIssue?.estimate ?? ""}
               onChange={(event) => onSetEstimate(event.target.value)}
               disabled={!activeIssue}
-              aria-label="Final estimate"
+              aria-label={t("aria.finalEstimate")}
             >
-              <option value="">Estimate</option>
+              <option value="">{t("common.estimate")}</option>
               {room.card_set.map((card) => (
                 <option key={card} value={card}>
                   {card}

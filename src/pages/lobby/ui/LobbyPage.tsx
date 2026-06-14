@@ -1,6 +1,8 @@
 import type { FormEvent } from "react";
 import { Loader2, LogIn, Plus, Sparkles, UserPlus } from "lucide-react";
 import type { Notice } from "../../../entities/room/model/types";
+import { LanguageSelector } from "../../../shared/i18n/LanguageSelector";
+import { useI18n } from "../../../shared/i18n";
 
 type LobbyPageProps = {
   initialRoomCode: string;
@@ -11,6 +13,8 @@ type LobbyPageProps = {
 };
 
 export function LobbyPage({ initialRoomCode, loading, notice, onCreateRoom, onJoinRoom }: LobbyPageProps) {
+  const { t } = useI18n();
+
   async function handleCreateRoom(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -31,19 +35,22 @@ export function LobbyPage({ initialRoomCode, loading, notice, onCreateRoom, onJo
 
   return (
     <main className="shell landing">
-      <section className="intro">
-        <div className="brand-row">
+      <div className="landing-header">
+        <div className="brand-identity">
           <div className="brand-mark">
             <Sparkles size={24} aria-hidden="true" />
           </div>
-          <span>Planning Poker</span>
+          <span>{t("brand.name")}</span>
         </div>
-        <h1>Estimate sprint work with a shared realtime deck.</h1>
-        <p>Create an invite-only room, vote privately, reveal together, and keep story estimates visible for the whole session.</p>
+        <LanguageSelector />
+      </div>
+      <section className="intro">
+        <h1>{t("lobby.heading")}</h1>
+        <p>{t("lobby.supporting")}</p>
         <div className="feature-strip">
-          <span>Realtime rooms</span>
-          <span>Hidden votes</span>
-          <span>Story queue</span>
+          <span>{t("feature.realtimeRooms")}</span>
+          <span>{t("feature.hiddenVotes")}</span>
+          <span>{t("feature.storyQueue")}</span>
         </div>
       </section>
 
@@ -51,42 +58,42 @@ export function LobbyPage({ initialRoomCode, loading, notice, onCreateRoom, onJo
         <form className="panel" onSubmit={handleCreateRoom}>
           <div className="panel-heading">
             <UserPlus size={20} aria-hidden="true" />
-            <h2>Create room</h2>
+            <h2>{t("action.createRoom")}</h2>
           </div>
           <label>
-            Room name
-            <input name="roomName" placeholder="Sprint planning" autoComplete="off" />
+            {t("field.roomName")}
+            <input name="roomName" placeholder={t("lobby.placeholderRoomName")} autoComplete="off" />
           </label>
           <label>
-            Your name
-            <input name="hostName" placeholder="Alex" autoComplete="name" required />
+            {t("field.hostName")}
+            <input name="hostName" placeholder={t("lobby.placeholderHostName")} autoComplete="name" required />
           </label>
           <button className="primary-action" type="submit" disabled={loading}>
             {loading ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <Plus size={18} aria-hidden="true" />}
-            Create room
+            {t("action.createRoom")}
           </button>
         </form>
 
         <form className="panel" onSubmit={handleJoinRoom}>
           <div className="panel-heading">
             <LogIn size={20} aria-hidden="true" />
-            <h2>Join room</h2>
+            <h2>{t("action.joinRoom")}</h2>
           </div>
           <label>
-            Room code
-            <input name="roomCode" placeholder="ABC123" defaultValue={initialRoomCode} autoComplete="off" required />
+            {t("field.roomCode")}
+            <input name="roomCode" placeholder={t("placeholder.roomCode")} defaultValue={initialRoomCode} autoComplete="off" required />
           </label>
           <label>
-            Your name
-            <input name="participantName" placeholder="Taylor" autoComplete="name" required />
+            {t("field.participantName")}
+            <input name="participantName" placeholder={t("lobby.placeholderParticipantName")} autoComplete="name" required />
           </label>
           <label className="checkbox-line">
             <input name="isSpectator" type="checkbox" />
-            Join as spectator
+            {t("field.spectator")}
           </label>
           <button className="secondary-action" type="submit" disabled={loading}>
             {loading ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <LogIn size={18} aria-hidden="true" />}
-            Join room
+            {t("action.joinRoom")}
           </button>
         </form>
       </section>

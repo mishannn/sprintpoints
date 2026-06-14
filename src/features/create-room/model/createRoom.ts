@@ -2,7 +2,13 @@ import { DEFAULT_CARDS } from "../../../shared/config/cards";
 import { supabase } from "../../../shared/api/supabase";
 import { makeToken } from "../../../shared/lib/token";
 
-export async function createPlanningRoom(roomName: string, participantName: string) {
+type CreateRoomDefaults = {
+  facilitatorName: string;
+  firstStoryTitle: string;
+  roomName: string;
+};
+
+export async function createPlanningRoom(roomName: string, participantName: string, defaults: CreateRoomDefaults) {
   if (!supabase) {
     throw new Error("Supabase is not configured.");
   }
@@ -12,7 +18,7 @@ export async function createPlanningRoom(roomName: string, participantName: stri
 
   const { data: room, error: roomError } = await supabase
     .from("rooms")
-    .insert({ name: roomName.trim() || "Sprint planning", host_token: hostToken, card_set: DEFAULT_CARDS })
+    .insert({ name: roomName.trim() || defaults.roomName, host_token: hostToken, card_set: DEFAULT_CARDS })
     .select("*")
     .single();
 
@@ -22,7 +28,7 @@ export async function createPlanningRoom(roomName: string, participantName: stri
 
   const { data: participant, error: participantError } = await supabase
     .from("participants")
-    .insert({ room_id: room.id, name: participantName.trim() || "Facilitator", token: participantToken })
+    .insert({ room_id: room.id, name: participantName.trim() || defaults.facilitatorName, token: participantToken })
     .select("*")
     .single();
 
@@ -32,7 +38,7 @@ export async function createPlanningRoom(roomName: string, participantName: stri
 
   const { data: issue, error: issueError } = await supabase
     .from("issues")
-    .insert({ room_id: room.id, title: "First story", description: "", link: "", position: 1 })
+    .insert({ room_id: room.id, title: defaults.firstStoryTitle, description: "", link: "", position: 1 })
     .select("*")
     .single();
 
