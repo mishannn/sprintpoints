@@ -113,6 +113,28 @@ export async function updateIssueDetails(issueId: string, details: IssueDetailsI
   return issue;
 }
 
+export async function deleteIssue(roomId: string, issueId: string, nextActiveIssueId?: string | null) {
+  if (!supabase) {
+    throw new AppError("supabaseMissing");
+  }
+
+  const { error } = await supabase.from("issues").delete().eq("id", issueId).eq("room_id", roomId);
+
+  if (error) {
+    throw new AppError("deleteStory", { cause: error });
+  }
+
+  if (nextActiveIssueId === undefined) {
+    return;
+  }
+
+  const { error: roomError } = await supabase.from("rooms").update({ active_issue_id: nextActiveIssueId, revealed: false }).eq("id", roomId);
+
+  if (roomError) {
+    throw new AppError("activateStoryAfterDelete", { cause: roomError });
+  }
+}
+
 export async function activateIssue(roomId: string, issueId: string) {
   if (!supabase) {
     throw new AppError("supabaseMissing");

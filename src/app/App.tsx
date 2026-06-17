@@ -48,6 +48,7 @@ function AppContent() {
       voteGroups={session.voteGroups}
       onActivateIssue={session.activateIssue}
       onAddIssue={session.addIssue}
+      onDeleteIssue={session.deleteIssue}
       onEditIssue={session.editIssue}
       onImportIssues={session.importIssues}
       onCastVote={session.castVote}

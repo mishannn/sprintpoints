@@ -4,6 +4,7 @@ import { joinPlanningRoom } from "../../join-room/model/joinRoom";
 import {
   createIssue,
   activateIssue as activateIssueRequest,
+  deleteIssue as deleteIssueRequest,
   importIssues as importIssuesRequest,
   saveIssueEstimate,
   updateIssueDetails,
@@ -26,6 +27,7 @@ export type PendingSync = {
   activeIssueId: string | null;
   addIssue: boolean;
   editIssueId: string | null;
+  deleteIssueId: string | null;
   estimate: boolean;
   refreshRoom: boolean;
 };
@@ -37,6 +39,7 @@ const idlePendingSync: PendingSync = {
   activeIssueId: null,
   addIssue: false,
   editIssueId: null,
+  deleteIssueId: null,
   estimate: false,
   refreshRoom: false,
 };
@@ -413,6 +416,43 @@ export function useRoomSession() {
     }
   }, [isHost, loadRoom, setPending, showError, state, t]);
 
+  const deleteIssue = useCallback(async (issue: Issue) => {
+    if (!state || !isHost) {
+      return;
+    }
+
+    const previousState = state;
+    const issueIndex = state.issues.findIndex((item) => item.id === issue.id);
+    const nextIssue = issueIndex >= 0 ? state.issues[issueIndex + 1] ?? state.issues[issueIndex - 1] ?? null : null;
+    const isDeletingActiveIssue = state.room.active_issue_id === issue.id;
+    const nextActiveIssueId = isDeletingActiveIssue ? nextIssue?.id ?? null : state.room.active_issue_id;
+
+    setNotice(null);
+    setPending({ deleteIssueId: issue.id });
+    setState((current) =>
+      current
+        ? {
+            ...current,
+            room: isDeletingActiveIssue
+              ? { ...current.room, active_issue_id: nextActiveIssueId, revealed: false }
+              : current.room,
+            issues: current.issues.filter((item) => item.id !== issue.id),
+            votes: current.votes.filter((vote) => vote.issue_id !== issue.id),
+          }
+        : current,
+    );
+
+    try {
+      await deleteIssueRequest(state.room.id, issue.id, isDeletingActiveIssue ? nextActiveIssueId : undefined);
+      await loadRoom(state.room.code);
+    } catch (error) {
+      setState(previousState);
+      showError(error, t("error.deleteStory"));
+    } finally {
+      setPending({ deleteIssueId: null });
+    }
+  }, [isHost, loadRoom, setPending, showError, state, t]);
+
   const importIssues = useCallback(async (details: IssueImportInput[]) => {
     if (!state || !isHost) {
       return false;
@@ -541,6 +581,7 @@ export function useRoomSession() {
     resetVoting,
     addIssue,
     editIssue,
+    deleteIssue,
     importIssues,
     activateIssue,
     setEstimate,

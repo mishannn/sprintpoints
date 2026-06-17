@@ -29,6 +29,7 @@ type RoomPageProps = {
   voteGroups: Record<string, number>;
   onActivateIssue: (issue: Issue) => void;
   onAddIssue: (details: IssueDetailsInput) => Promise<boolean>;
+  onDeleteIssue: (issue: Issue) => Promise<void>;
   onEditIssue: (issue: Issue, details: IssueDetailsInput) => Promise<boolean>;
   onImportIssues: (details: IssueImportInput[]) => Promise<boolean>;
   onCastVote: (value: string) => void;
@@ -52,6 +53,7 @@ export function RoomPage({
   voteGroups,
   onActivateIssue,
   onAddIssue,
+  onDeleteIssue,
   onEditIssue,
   onImportIssues,
   onCastVote,
@@ -105,6 +107,7 @@ export function RoomPage({
           roomName={state.room.name}
           onActivateIssue={onActivateIssue}
           onAddIssue={onAddIssue}
+          onDeleteIssue={onDeleteIssue}
           onEditIssue={onEditIssue}
           onImportIssues={onImportIssues}
         />

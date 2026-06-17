@@ -7,6 +7,8 @@ export type AppErrorCode =
   | "createFirstStory"
   | "createRoomApi"
   | "csvHeaderEmpty"
+  | "deleteStory"
+  | "activateStoryAfterDelete"
   | "importStories"
   | "joinRoom"
   | "joinRoomRequired"
