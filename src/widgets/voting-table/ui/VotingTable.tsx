@@ -17,6 +17,7 @@ type VotingTableProps = {
   currentVote: Vote | null;
   isHost: boolean;
   pendingSync: PendingSync;
+  participants: Participant[];
   room: Room;
   summary: VoteSummary;
   votersCount: number;
@@ -38,6 +39,7 @@ export function VotingTable({
   currentVote,
   isHost,
   pendingSync,
+  participants,
   room,
   summary,
   votersCount,
@@ -51,6 +53,13 @@ export function VotingTable({
   const activeDescription = activeIssue?.description ?? "";
   const activeLink = activeIssue?.link ?? "";
   const activeStoryLink = activeLink.trim() ? getExternalHref(activeLink.trim()) : null;
+  const votesByParticipantId = new Map(activeVotes.map((vote) => [vote.participant_id, vote]));
+  const voterRows = participants
+    .filter((participant) => !participant.is_spectator)
+    .map((participant) => ({
+      participant,
+      vote: votesByParticipantId.get(participant.id) ?? null,
+    }));
 
   return (
     <Paper component="section" withBorder p="xl">
@@ -154,6 +163,7 @@ export function VotingTable({
         </SimpleGrid>
 
       {room.revealed ? (
+        <Stack gap="sm">
           <Paper withBorder bg="gray.0">
             <Stack gap={0}>
           {Object.entries(voteGroups).map(([value, count]) => (
@@ -169,6 +179,26 @@ export function VotingTable({
           ))}
             </Stack>
           </Paper>
+          <Paper withBorder bg="gray.0" p="md">
+            <Stack gap="sm">
+              <Text c="dimmed" fz="xs" fw={900} tt="uppercase">
+                {t("label.revealedVotes")}
+              </Text>
+              <Stack gap="xs">
+                {voterRows.map(({ participant, vote }) => (
+                  <Paper key={participant.id} withBorder bg="white" p="sm">
+                    <Group justify="space-between" gap="md" wrap="nowrap">
+                      <Text fw={650} truncate>
+                        {participant.name}
+                      </Text>
+                      <Badge variant={vote ? "filled" : "default"}>{vote?.value ?? t("common.noVote")}</Badge>
+                    </Group>
+                  </Paper>
+                ))}
+              </Stack>
+            </Stack>
+          </Paper>
+        </Stack>
       ) : (
           <Paper withBorder bg="gray.0" p="xl">
             <Center mih={130}>

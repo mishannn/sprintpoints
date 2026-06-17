@@ -133,6 +133,7 @@ export function RoomPage({
               currentVote={currentVote}
               isHost={isHost}
               pendingSync={pendingSync}
+              participants={state.participants}
               room={state.room}
               summary={summary}
               votersCount={votersCount}
