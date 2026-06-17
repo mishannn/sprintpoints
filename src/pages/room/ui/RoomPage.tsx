@@ -18,7 +18,9 @@ type VoteSummary = {
 
 type RoomPageProps = {
   activeIssue: Issue | null;
+  activeIssues: Issue[];
   activeVotes: Vote[];
+  archivedIssues: Issue[];
   currentParticipant: Participant;
   currentVote: Vote | null;
   isHost: boolean;
@@ -30,9 +32,11 @@ type RoomPageProps = {
   voteGroups: Record<string, number>;
   onActivateIssue: (issue: Issue) => void;
   onAddIssue: (details: IssueDetailsInput) => Promise<boolean>;
+  onArchiveIssue: (issue: Issue) => Promise<void>;
   onDeleteIssue: (issue: Issue) => Promise<void>;
   onEditIssue: (issue: Issue, details: IssueDetailsInput) => Promise<boolean>;
   onImportIssues: (details: IssueImportInput[]) => Promise<boolean>;
+  onUnarchiveIssue: (issue: Issue) => Promise<void>;
   onCastVote: (value: string) => void;
   onRefreshRoom: () => void;
   onResetVoting: () => void;
@@ -42,7 +46,9 @@ type RoomPageProps = {
 
 export function RoomPage({
   activeIssue,
+  activeIssues,
   activeVotes,
+  archivedIssues,
   currentParticipant,
   currentVote,
   isHost,
@@ -54,9 +60,11 @@ export function RoomPage({
   voteGroups,
   onActivateIssue,
   onAddIssue,
+  onArchiveIssue,
   onDeleteIssue,
   onEditIssue,
   onImportIssues,
+  onUnarchiveIssue,
   onCastVote,
   onRefreshRoom,
   onResetVoting,
@@ -112,16 +120,19 @@ export function RoomPage({
             <RoomSidebar
               activeIssue={activeIssue}
               activeVotes={activeVotes}
+              archivedIssues={archivedIssues}
               isHost={isHost}
-              issues={state.issues}
+              issues={activeIssues}
               pendingSync={pendingSync}
               participants={state.participants}
               roomName={state.room.name}
               onActivateIssue={onActivateIssue}
               onAddIssue={onAddIssue}
+              onArchiveIssue={onArchiveIssue}
               onDeleteIssue={onDeleteIssue}
               onEditIssue={onEditIssue}
               onImportIssues={onImportIssues}
+              onUnarchiveIssue={onUnarchiveIssue}
             />
           </Grid.Col>
 
@@ -132,6 +143,7 @@ export function RoomPage({
               currentParticipant={currentParticipant}
               currentVote={currentVote}
               isHost={isHost}
+              issues={state.issues}
               pendingSync={pendingSync}
               participants={state.participants}
               room={state.room}

@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPlanningRoom } from "../../create-room/model/createRoom";
 import { joinPlanningRoom } from "../../join-room/model/joinRoom";
 import {
+  archiveIssue as archiveIssueRequest,
   createIssue,
   activateIssue as activateIssueRequest,
   deleteIssue as deleteIssueRequest,
   importIssues as importIssuesRequest,
   saveIssueEstimate,
+  unarchiveIssue as unarchiveIssueRequest,
   updateIssueDetails,
   type IssueDetailsInput,
   type IssueImportInput,
@@ -26,10 +28,12 @@ export type PendingSync = {
   resetVoting: boolean;
   activeIssueId: string | null;
   addIssue: boolean;
+  archiveIssueId: string | null;
   editIssueId: string | null;
   deleteIssueId: string | null;
   estimate: boolean;
   refreshRoom: boolean;
+  unarchiveIssueId: string | null;
 };
 
 const idlePendingSync: PendingSync = {
@@ -38,10 +42,12 @@ const idlePendingSync: PendingSync = {
   resetVoting: false,
   activeIssueId: null,
   addIssue: false,
+  archiveIssueId: null,
   editIssueId: null,
   deleteIssueId: null,
   estimate: false,
   refreshRoom: false,
+  unarchiveIssueId: null,
 };
 
 export function useRoomSession() {
@@ -57,9 +63,11 @@ export function useRoomSession() {
   const estimateSyncId = useRef(0);
 
   const isHost = Boolean(state && hostToken && hostToken === state.room.host_token);
+  const activeIssues = useMemo(() => state?.issues.filter((issue) => !issue.archived_at) ?? [], [state?.issues]);
+  const archivedIssues = useMemo(() => state?.issues.filter((issue) => issue.archived_at) ?? [], [state?.issues]);
   const activeIssue = useMemo(
-    () => state?.issues.find((issue) => issue.id === state.room.active_issue_id) ?? state?.issues[0] ?? null,
-    [state],
+    () => activeIssues.find((issue) => issue.id === state?.room.active_issue_id) ?? activeIssues[0] ?? null,
+    [activeIssues, state?.room.active_issue_id],
   );
   const activeVotes = useMemo(
     () => state?.votes.filter((vote) => vote.issue_id === activeIssue?.id) ?? [],
@@ -422,8 +430,9 @@ export function useRoomSession() {
     }
 
     const previousState = state;
-    const issueIndex = state.issues.findIndex((item) => item.id === issue.id);
-    const nextIssue = issueIndex >= 0 ? state.issues[issueIndex + 1] ?? state.issues[issueIndex - 1] ?? null : null;
+    const currentActiveIssues = state.issues.filter((item) => !item.archived_at);
+    const issueIndex = currentActiveIssues.findIndex((item) => item.id === issue.id);
+    const nextIssue = issueIndex >= 0 ? currentActiveIssues[issueIndex + 1] ?? currentActiveIssues[issueIndex - 1] ?? null : null;
     const isDeletingActiveIssue = state.room.active_issue_id === issue.id;
     const nextActiveIssueId = isDeletingActiveIssue ? nextIssue?.id ?? null : state.room.active_issue_id;
 
@@ -450,6 +459,88 @@ export function useRoomSession() {
       showError(error, t("error.deleteStory"));
     } finally {
       setPending({ deleteIssueId: null });
+    }
+  }, [isHost, loadRoom, setPending, showError, state, t]);
+
+  const archiveIssue = useCallback(async (issue: Issue) => {
+    if (!state || !isHost) {
+      return;
+    }
+
+    const archivedAt = new Date().toISOString();
+    const previousState = state;
+    const currentActiveIssues = state.issues.filter((item) => !item.archived_at);
+    const issueIndex = currentActiveIssues.findIndex((item) => item.id === issue.id);
+    const nextIssue = issueIndex >= 0 ? currentActiveIssues[issueIndex + 1] ?? currentActiveIssues[issueIndex - 1] ?? null : null;
+    const isArchivingActiveIssue = state.room.active_issue_id === issue.id;
+    const nextActiveIssueId = isArchivingActiveIssue ? nextIssue?.id ?? null : state.room.active_issue_id;
+
+    setNotice(null);
+    setPending({ archiveIssueId: issue.id });
+    setState((current) =>
+      current
+        ? {
+            ...current,
+            room: isArchivingActiveIssue
+              ? { ...current.room, active_issue_id: nextActiveIssueId, revealed: false }
+              : current.room,
+            issues: current.issues.map((item) => (item.id === issue.id ? { ...item, archived_at: archivedAt } : item)),
+          }
+        : current,
+    );
+
+    try {
+      await archiveIssueRequest(state.room.id, issue.id, isArchivingActiveIssue ? nextActiveIssueId : undefined);
+      await loadRoom(state.room.code);
+    } catch (error) {
+      setState(previousState);
+      showError(error, t("error.archiveStory"));
+    } finally {
+      setPending({ archiveIssueId: null });
+    }
+  }, [isHost, loadRoom, setPending, showError, state, t]);
+
+  const unarchiveIssue = useCallback(async (issue: Issue) => {
+    if (!state || !isHost) {
+      return;
+    }
+
+    const previousIssue = issue;
+
+    setNotice(null);
+    setPending({ unarchiveIssueId: issue.id });
+    setState((current) =>
+      current
+        ? {
+            ...current,
+            issues: current.issues.map((item) => (item.id === issue.id ? { ...item, archived_at: null } : item)),
+          }
+        : current,
+    );
+
+    try {
+      const updatedIssue = await unarchiveIssueRequest(state.room.id, issue.id);
+      setState((current) =>
+        current
+          ? {
+              ...current,
+              issues: current.issues.map((item) => (item.id === issue.id ? updatedIssue : item)),
+            }
+          : current,
+      );
+      await loadRoom(state.room.code);
+    } catch (error) {
+      setState((current) =>
+        current
+          ? {
+              ...current,
+              issues: current.issues.map((item) => (item.id === issue.id ? previousIssue : item)),
+            }
+          : current,
+      );
+      showError(error, t("error.unarchiveStory"));
+    } finally {
+      setPending({ unarchiveIssueId: null });
     }
   }, [isHost, loadRoom, setPending, showError, state, t]);
 
@@ -563,6 +654,8 @@ export function useRoomSession() {
 
   return {
     state,
+    activeIssues,
+    archivedIssues,
     currentParticipant,
     loading,
     notice,
@@ -582,6 +675,8 @@ export function useRoomSession() {
     addIssue,
     editIssue,
     deleteIssue,
+    archiveIssue,
+    unarchiveIssue,
     importIssues,
     activateIssue,
     setEstimate,

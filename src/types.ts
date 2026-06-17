@@ -92,6 +92,7 @@ export type Database = {
           link: string;
           position: number;
           estimate: string | null;
+          archived_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -102,6 +103,7 @@ export type Database = {
           link?: string;
           position?: number;
           estimate?: string | null;
+          archived_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -112,6 +114,7 @@ export type Database = {
           link?: string;
           position?: number;
           estimate?: string | null;
+          archived_at?: string | null;
           created_at?: string;
         };
         Relationships: [

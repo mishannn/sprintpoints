@@ -2,13 +2,15 @@ export type AppErrorCode =
   | "activateImportedStory"
   | "activateNewStory"
   | "activateStory"
+  | "activateStoryAfterArchive"
+  | "activateStoryAfterDelete"
   | "addFacilitator"
   | "addStory"
+  | "archiveStory"
   | "createFirstStory"
   | "createRoomApi"
   | "csvHeaderEmpty"
   | "deleteStory"
-  | "activateStoryAfterDelete"
   | "importStories"
   | "joinRoom"
   | "joinRoomRequired"
@@ -20,6 +22,7 @@ export type AppErrorCode =
   | "saveVote"
   | "storyTitleRequired"
   | "supabaseMissing"
+  | "unarchiveStory"
   | "updateStory";
 
 type AppErrorOptions = {

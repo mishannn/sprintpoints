@@ -16,6 +16,7 @@ type VotingTableProps = {
   currentParticipant: Participant;
   currentVote: Vote | null;
   isHost: boolean;
+  issues: Issue[];
   pendingSync: PendingSync;
   participants: Participant[];
   room: Room;
@@ -38,6 +39,7 @@ export function VotingTable({
   currentParticipant,
   currentVote,
   isHost,
+  issues,
   pendingSync,
   participants,
   room,
@@ -53,6 +55,10 @@ export function VotingTable({
   const activeDescription = activeIssue?.description ?? "";
   const activeLink = activeIssue?.link ?? "";
   const activeStoryLink = activeLink.trim() ? getExternalHref(activeLink.trim()) : null;
+  const selectedRating = currentVote?.value ?? null;
+  const matchingEstimateIssues = selectedRating
+    ? issues.filter((issue) => issue.id !== activeIssue?.id && issue.estimate === selectedRating)
+    : [];
   const votesByParticipantId = new Map(activeVotes.map((vote) => [vote.participant_id, vote]));
   const voterRows = participants
     .filter((participant) => !participant.is_spectator)
@@ -134,6 +140,54 @@ export function VotingTable({
             </Button>
         ))}
         </SimpleGrid>
+
+        {selectedRating ? (
+          <Paper withBorder bg="gray.0" p="md">
+            <Stack gap="sm">
+              <Group justify="space-between" gap="sm">
+                <Text c="dimmed" fz="xs" fw={900} tt="uppercase">
+                  {t("label.sameEstimate", { value: selectedRating })}
+                </Text>
+                <Badge variant="default">{matchingEstimateIssues.length}</Badge>
+              </Group>
+              {matchingEstimateIssues.length ? (
+                <Stack gap="xs">
+                  {matchingEstimateIssues.map((issue) => {
+                    const link = issue.link ?? "";
+                    const href = link.trim() ? getExternalHref(link.trim()) : null;
+
+                    return (
+                      <Paper key={issue.id} withBorder bg="white" p="sm">
+                        <Group justify="space-between" align="flex-start" gap="sm" wrap="nowrap">
+                          <Box miw={0}>
+                            {issue.archived_at ? <Badge variant="light" mb={4}>{t("common.archived")}</Badge> : null}
+                            <Text fw={650} lineClamp={2}>
+                              {issue.title}
+                            </Text>
+                            {href ? (
+                              <Anchor href={href} target="_blank" rel="noreferrer" fz="xs" c="dimmed">
+                                <Group gap={5} wrap="nowrap">
+                                  <Text span truncate>
+                                    {link}
+                                  </Text>
+                                  <ExternalLink size={13} aria-hidden="true" />
+                                </Group>
+                              </Anchor>
+                            ) : null}
+                          </Box>
+                        </Group>
+                      </Paper>
+                    );
+                  })}
+                </Stack>
+              ) : (
+                <Text c="dimmed" fw={700}>
+                  {t("state.noMatchingEstimate")}
+                </Text>
+              )}
+            </Stack>
+          </Paper>
+        ) : null}
 
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
           <Paper withBorder bg="gray.0" p="md">

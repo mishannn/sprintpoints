@@ -135,6 +135,56 @@ export async function deleteIssue(roomId: string, issueId: string, nextActiveIss
   }
 }
 
+export async function archiveIssue(roomId: string, issueId: string, nextActiveIssueId?: string | null) {
+  if (!supabase) {
+    throw new AppError("supabaseMissing");
+  }
+
+  const { data: issue, error } = await supabase
+    .from("issues")
+    .update({ archived_at: new Date().toISOString() })
+    .eq("id", issueId)
+    .eq("room_id", roomId)
+    .select("*")
+    .single();
+
+  if (error || !issue) {
+    throw new AppError("archiveStory", { cause: error });
+  }
+
+  if (nextActiveIssueId === undefined) {
+    return issue;
+  }
+
+  const { error: roomError } = await supabase.from("rooms").update({ active_issue_id: nextActiveIssueId, revealed: false }).eq("id", roomId);
+
+  if (roomError) {
+    throw new AppError("activateStoryAfterArchive", { cause: roomError });
+  }
+
+  return issue;
+}
+
+export async function unarchiveIssue(roomId: string, issueId: string) {
+  if (!supabase) {
+    throw new AppError("supabaseMissing");
+  }
+
+  const { data: issue, error } = await supabase
+    .from("issues")
+    .update({ archived_at: null })
+    .eq("id", issueId)
+    .eq("room_id", roomId)
+    .select("*")
+    .single();
+
+  if (error || !issue) {
+    throw new AppError("unarchiveStory", { cause: error });
+  }
+
+  return issue;
+}
+
 export async function activateIssue(roomId: string, issueId: string) {
   if (!supabase) {
     throw new AppError("supabaseMissing");

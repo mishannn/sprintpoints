@@ -36,7 +36,9 @@ function AppContent() {
   return (
     <RoomPage
       activeIssue={session.activeIssue}
+      activeIssues={session.activeIssues}
       activeVotes={session.activeVotes}
+      archivedIssues={session.archivedIssues}
       currentParticipant={session.currentParticipant}
       currentVote={session.currentVote}
       isHost={session.isHost}
@@ -48,9 +50,11 @@ function AppContent() {
       voteGroups={session.voteGroups}
       onActivateIssue={session.activateIssue}
       onAddIssue={session.addIssue}
+      onArchiveIssue={session.archiveIssue}
       onDeleteIssue={session.deleteIssue}
       onEditIssue={session.editIssue}
       onImportIssues={session.importIssues}
+      onUnarchiveIssue={session.unarchiveIssue}
       onCastVote={session.castVote}
       onRefreshRoom={session.refreshRoom}
       onResetVoting={session.resetVoting}

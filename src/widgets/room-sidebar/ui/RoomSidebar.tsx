@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { ActionIcon, Badge, Box, Button, Group, Loader, Paper, ScrollArea, Stack, Text, Title, Tooltip, UnstyledButton } from "@mantine/core";
-import { Download, ExternalLink, Pencil, Plus, Settings, Trash2, Upload, Users } from "lucide-react";
+import { ActionIcon, Badge, Box, Button, Center, Group, Loader, Modal, Paper, ScrollArea, Stack, Text, Title, Tooltip, UnstyledButton } from "@mantine/core";
+import { Archive, ArchiveRestore, Download, ExternalLink, Pencil, Plus, Settings, Trash2, Upload, Users } from "lucide-react";
 import type { Issue, Participant, Vote } from "../../../entities/room/model/types";
 import type { IssueDetailsInput, IssueImportInput } from "../../../features/manage-issues/model/issues";
 import { downloadJiraCsv } from "../../../features/manage-issues/model/jiraCsv";
@@ -12,6 +12,7 @@ import { ImportIssuesModal } from "./ImportIssuesModal";
 type RoomSidebarProps = {
   activeIssue: Issue | null;
   activeVotes: Vote[];
+  archivedIssues: Issue[];
   isHost: boolean;
   issues: Issue[];
   pendingSync: PendingSync;
@@ -19,9 +20,11 @@ type RoomSidebarProps = {
   roomName: string;
   onActivateIssue: (issue: Issue) => void;
   onAddIssue: (details: IssueDetailsInput) => Promise<boolean>;
+  onArchiveIssue: (issue: Issue) => Promise<void>;
   onDeleteIssue: (issue: Issue) => Promise<void>;
   onEditIssue: (issue: Issue, details: IssueDetailsInput) => Promise<boolean>;
   onImportIssues: (details: IssueImportInput[]) => Promise<boolean>;
+  onUnarchiveIssue: (issue: Issue) => Promise<void>;
 };
 
 function getExternalHref(value: string) {
@@ -31,6 +34,7 @@ function getExternalHref(value: string) {
 export function RoomSidebar({
   activeIssue,
   activeVotes,
+  archivedIssues,
   isHost,
   issues,
   pendingSync,
@@ -38,12 +42,15 @@ export function RoomSidebar({
   roomName,
   onActivateIssue,
   onAddIssue,
+  onArchiveIssue,
   onDeleteIssue,
   onEditIssue,
   onImportIssues,
+  onUnarchiveIssue,
 }: RoomSidebarProps) {
   const { t } = useI18n();
   const [isAddIssueOpen, setIsAddIssueOpen] = useState(false);
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [isImportIssuesOpen, setIsImportIssuesOpen] = useState(false);
   const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
 
@@ -66,6 +73,14 @@ export function RoomSidebar({
     }
 
     void onDeleteIssue(issue);
+  };
+
+  const handleArchiveIssue = (issue: Issue) => {
+    void onArchiveIssue(issue);
+  };
+
+  const handleUnarchiveIssue = (issue: Issue) => {
+    void onUnarchiveIssue(issue);
   };
 
   return (
@@ -173,6 +188,21 @@ export function RoomSidebar({
                       ) : null}
                       {isHost ? (
                         <>
+                                <Tooltip label={issue.estimate ? t("action.archiveStory") : t("hint.archiveNeedsEstimate")}>
+                                  <ActionIcon
+                                    variant="default"
+                                    type="button"
+                                    onClick={() => handleArchiveIssue(issue)}
+                                    aria-label={t("action.archiveStory")}
+                                    disabled={!issue.estimate || pendingSync.archiveIssueId === issue.id || pendingSync.editIssueId === issue.id || pendingSync.deleteIssueId === issue.id}
+                                  >
+                                    {pendingSync.archiveIssueId === issue.id ? (
+                                      <Loader size="xs" aria-hidden="true" />
+                                    ) : (
+                                      <Archive size={16} aria-hidden="true" />
+                                    )}
+                                  </ActionIcon>
+                                </Tooltip>
                                 <ActionIcon
                                   variant="default"
                             type="button"
@@ -219,6 +249,16 @@ export function RoomSidebar({
         </Stack>
       </Paper>
 
+      <Button
+        variant="default"
+        type="button"
+        onClick={() => setIsArchiveOpen(true)}
+        leftSection={<Archive size={18} aria-hidden="true" />}
+        rightSection={<Badge variant="default">{archivedIssues.length}</Badge>}
+      >
+        {t("action.openArchive")}
+      </Button>
+
       <AddIssueModal
         issue={editingIssue}
         isOpen={isAddIssueOpen || Boolean(editingIssue)}
@@ -232,6 +272,74 @@ export function RoomSidebar({
         onClose={() => setIsImportIssuesOpen(false)}
         onSubmit={onImportIssues}
       />
+      <Modal opened={isArchiveOpen} onClose={() => setIsArchiveOpen(false)} title={t("modal.archiveTitle")} size="lg">
+        {archivedIssues.length ? (
+          <ScrollArea.Autosize mah={520} type="auto">
+            <Stack gap="xs" pr={4}>
+              {archivedIssues.map((issue) => {
+                const link = issue.link ?? "";
+
+                return (
+                  <Paper key={issue.id} withBorder bg="gray.0" p="sm">
+                    <Stack gap="xs">
+                      <Group justify="space-between" align="flex-start" gap="sm" wrap="nowrap">
+                        <Box miw={0}>
+                          <Text fw={650} lineClamp={2}>
+                            {issue.title}
+                          </Text>
+                          {link ? (
+                            <Text c="dimmed" fz="xs" lineClamp={2}>
+                              {link}
+                            </Text>
+                          ) : null}
+                        </Box>
+                        {issue.estimate ? <Badge variant="default">{issue.estimate}</Badge> : null}
+                      </Group>
+                      <Group justify="space-between" gap="xs">
+                        <Text c="dimmed" fz="xs">
+                          {issue.archived_at ? new Date(issue.archived_at).toLocaleDateString() : t("common.archive")}
+                        </Text>
+                        <Group gap={5}>
+                          {link ? (
+                            <Tooltip label={t("action.openStoryLink")}>
+                              <ActionIcon component="a" variant="default" href={getExternalHref(link)} target="_blank" rel="noreferrer" aria-label={t("action.openStoryLink")}>
+                                <ExternalLink size={16} aria-hidden="true" />
+                              </ActionIcon>
+                            </Tooltip>
+                          ) : null}
+                          {isHost ? (
+                            <Tooltip label={t("action.unarchiveStory")}>
+                              <ActionIcon
+                                variant="default"
+                                type="button"
+                                onClick={() => handleUnarchiveIssue(issue)}
+                                aria-label={t("action.unarchiveStory")}
+                                disabled={pendingSync.unarchiveIssueId === issue.id}
+                              >
+                                {pendingSync.unarchiveIssueId === issue.id ? (
+                                  <Loader size="xs" aria-hidden="true" />
+                                ) : (
+                                  <ArchiveRestore size={16} aria-hidden="true" />
+                                )}
+                              </ActionIcon>
+                            </Tooltip>
+                          ) : null}
+                        </Group>
+                      </Group>
+                    </Stack>
+                  </Paper>
+                );
+              })}
+            </Stack>
+          </ScrollArea.Autosize>
+        ) : (
+          <Center mih={120}>
+            <Text c="dimmed" fw={700}>
+              {t("state.archiveEmpty")}
+            </Text>
+          </Center>
+        )}
+      </Modal>
     </Stack>
   );
 }
