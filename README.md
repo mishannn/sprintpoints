@@ -10,8 +10,11 @@ It is built as a lightweight product: a static React frontend that can be hosted
 - **Invite-link collaboration**: participants join by room code or shared URL.
 - **Private voting**: votes stay hidden until the facilitator reveals them.
 - **Realtime updates**: participants, stories, votes, reveals, and resets sync across connected clients.
-- **Story queue**: add and edit stories, switch the active story, store the final estimate, and keep story details visible while voting.
-- **Jira CSV workflow**: import stories from Jira-style CSV files with column mapping, then export the room backlog back to CSV.
+- **Story queue**: add, edit, delete, and archive stories; switch the active story; store the final estimate; and keep story details visible while voting.
+- **Estimate references**: after choosing a rating, see active and archived stories with the same saved estimate directly under the vote cards.
+- **Archive modal**: keep completed stories out of the active queue while retaining them as reference material, with unarchive support when a story should return to the queue.
+- **Jira CSV workflow**: import stories from Jira-style CSV files with column mapping and optional link URL patterns, then export the room backlog back to CSV.
+- **Revealed vote table**: after reveal, show each participant's vote alongside the aggregate distribution.
 - **Spectator mode**: let stakeholders observe without affecting the vote count.
 - **Sync feedback**: optimistic updates and loading states keep slow realtime writes visible to the facilitator and participants.
 - **Setup guard**: missing Supabase configuration shows a setup-required screen instead of a broken room.
@@ -20,7 +23,7 @@ It is built as a lightweight product: a static React frontend that can be hosted
 ## Tech Stack
 
 - **Frontend**: React, TypeScript, Vite
-- **UI**: CSS, lucide-react icons
+- **UI**: Mantine, lucide-react icons
 - **Backend**: Supabase Cloud Postgres
 - **Realtime**: Supabase Realtime via `postgres_changes`
 - **Hosting**: GitHub Pages
@@ -31,7 +34,7 @@ The frontend is a single-page app. Supabase stores room data in four tables:
 
 - `rooms`: room metadata, card set, reveal state, active story
 - `participants`: room members, spectator flag, heartbeat timestamp
-- `issues`: story queue, descriptions, links, order, and final estimates
+- `issues`: story queue, descriptions, links, order, final estimates, and archive timestamps
 - `votes`: one vote per participant per story
 
 The app subscribes to Supabase realtime changes and reloads room state when any relevant table changes.
@@ -91,6 +94,8 @@ The migration files are:
 ```text
 supabase/migrations/20260610160000_init_planning_poker.sql
 supabase/migrations/20260610190000_add_issue_details.sql
+supabase/migrations/20260617133000_allow_issue_delete.sql
+supabase/migrations/20260617150000_add_issue_archive.sql
 ```
 
 You can also run the migration manually in the Supabase SQL Editor.
@@ -176,7 +181,7 @@ Recommended hardening path:
 - Custom card decks per room
 - Import stories from GitHub issues
 - Timer for voting rounds
-- Room history and completed story archive
+- Room history across planning sessions
 - Facilitator handoff
 - Optional authenticated workspaces
 
@@ -210,19 +215,21 @@ Recommended hardening path:
 │   ├── shared/
 │   │   ├── api/supabase.ts
 │   │   ├── config/cards.ts
+│   │   ├── i18n/
 │   │   └── lib/
 │   ├── widgets/
 │   │   ├── invite-card/ui/InviteCard.tsx
 │   │   ├── room-sidebar/ui/
 │   │   └── voting-table/ui/VotingTable.tsx
 │   ├── main.tsx
-│   ├── styles.css
 │   └── types.ts
 ├── supabase/
 │   ├── config.toml
 │   └── migrations/
 │       ├── 20260610160000_init_planning_poker.sql
-│       └── 20260610190000_add_issue_details.sql
+│       ├── 20260610190000_add_issue_details.sql
+│       ├── 20260617133000_allow_issue_delete.sql
+│       └── 20260617150000_add_issue_archive.sql
 ├── .env.example
 ├── vite.config.ts
 └── package.json
