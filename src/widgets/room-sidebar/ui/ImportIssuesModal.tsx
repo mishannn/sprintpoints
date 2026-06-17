@@ -1,6 +1,7 @@
-import type { ChangeEvent, FormEvent } from "react";
-import { useEffect, useId, useMemo, useState } from "react";
-import { FileUp, Loader2, X } from "lucide-react";
+import type { FormEvent } from "react";
+import { useMemo, useState } from "react";
+import { Alert, Button, FileButton, Group, Modal, Paper, Select, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
+import { FileUp } from "lucide-react";
 import type { IssueImportInput } from "../../../features/manage-issues/model/issues";
 import {
   getInitialJiraImportMapping,
@@ -28,8 +29,8 @@ const emptyMapping: JiraImportMapping = {
   estimate: null,
 };
 
-function parseSelectValue(value: string) {
-  return value === "" ? null : Number(value);
+function parseSelectValue(value: string | null) {
+  return value === null || value === "" ? null : Number(value);
 }
 
 function formatOptionLabel(header: string, index: number, unnamedColumnLabel: string) {
@@ -43,25 +44,14 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
   const [linkPattern, setLinkPattern] = useState("");
   const [fileName, setFileName] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const fileInputId = useId();
 
   const mappedIssues = useMemo(() => (csvData ? mapJiraCsvRows(csvData, mapping, linkPattern) : []), [csvData, mapping, linkPattern]);
   const previewRows = mappedIssues.slice(0, 3);
-
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  const columnOptions =
+    csvData?.headers.map((header, index) => ({
+      value: String(index),
+      label: formatOptionLabel(header, index, t("import.unnamedColumn")),
+    })) ?? [];
 
   function reset() {
     setCsvData(null);
@@ -76,10 +66,7 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
     onClose();
   }
 
-  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-
+  async function handleFileChange(file: File | null) {
     if (!file) {
       return;
     }
@@ -104,7 +91,7 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
     }
   }
 
-  function updateMapping(field: MappingField, value: string) {
+  function updateMapping(field: MappingField, value: string | null) {
     setMapping((current) => ({ ...current, [field]: parseSelectValue(value) }));
   }
 
@@ -127,129 +114,124 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
     }
   }
 
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={close}>
-      <section
-        className="modal-panel import-modal-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="import-stories-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="modal-header">
-          <div>
-            <span className="eyebrow">{t("common.csv")}</span>
-            <h2 id="import-stories-title">{t("modal.importStoriesTitle")}</h2>
-          </div>
-          <button className="icon-button" type="button" onClick={close} aria-label={t("action.closeImportForm")}>
-            <X size={20} aria-hidden="true" />
-          </button>
-        </div>
+    <Modal
+      opened={isOpen}
+      onClose={close}
+      size="lg"
+      title={
+        <Stack gap={2}>
+          <Text c="dimmed" fz="xs" fw={900} tt="uppercase">
+            {t("common.csv")}
+          </Text>
+          <Text fw={700} fz="xl">
+            {t("modal.importStoriesTitle")}
+          </Text>
+        </Stack>
+      }
+      aria-label={t("modal.importStoriesTitle")}
+      centered
+    >
+      <form onSubmit={handleSubmit}>
+        <Stack gap="md">
+          <FileButton onChange={handleFileChange} accept=".csv,text/csv">
+            {(props) => (
+              <Button {...props} variant="light" leftSection={<FileUp size={18} aria-hidden="true" />}>
+                {t("action.chooseCsvFile")}
+              </Button>
+            )}
+          </FileButton>
 
-        <form className="story-form" onSubmit={handleSubmit}>
-          <div className="csv-file-field">
-            <input id={fileInputId} className="visually-hidden-input" type="file" accept=".csv,text/csv" onChange={handleFileChange} />
-            <label className="csv-file-button" htmlFor={fileInputId}>
-              <FileUp size={18} aria-hidden="true" />
-              {t("action.chooseCsvFile")}
-            </label>
-          </div>
-
-          {fileName ? <p className="import-file-name">{fileName}</p> : null}
-          {error ? <p className="form-error">{error}</p> : null}
+          {fileName ? (
+            <Text c="dimmed" fw={700}>
+              {fileName}
+            </Text>
+          ) : null}
+          {error ? <Alert color="red">{error}</Alert> : null}
 
           {csvData ? (
             <>
-              <div className="mapping-grid">
-                <label>
-                  {t("common.title")}
-                  <select value={mapping.title ?? ""} onChange={(event) => updateMapping("title", event.target.value)} required>
-                    <option value="">{t("action.chooseColumn")}</option>
-                    {csvData.headers.map((header, index) => (
-                      <option key={`${index}-${header}`} value={index}>
-                        {formatOptionLabel(header, index, t("import.unnamedColumn"))}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  {t("common.description")}
-                  <select value={mapping.description ?? ""} onChange={(event) => updateMapping("description", event.target.value)}>
-                    <option value="">{t("action.skip")}</option>
-                    {csvData.headers.map((header, index) => (
-                      <option key={`${index}-${header}`} value={index}>
-                        {formatOptionLabel(header, index, t("import.unnamedColumn"))}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <div className="link-mapping-group">
-                  <label>
-                    {t("common.link")}
-                    <select value={mapping.link ?? ""} onChange={(event) => updateMapping("link", event.target.value)}>
-                      <option value="">{t("action.skip")}</option>
-                      {csvData.headers.map((header, index) => (
-                        <option key={`${index}-${header}`} value={index}>
-                          {formatOptionLabel(header, index, t("import.unnamedColumn"))}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    {t("field.linkPattern")}
-                    <input
-                      value={linkPattern}
-                      onChange={(event) => setLinkPattern(event.target.value)}
-                      placeholder={t("placeholder.linkPattern")}
-                      inputMode="url"
-                      disabled={mapping.link === null}
-                    />
-                  </label>
-                  <span className="field-hint">{t("hint.linkPattern")}</span>
-                </div>
-                <label>
-                  {t("common.estimate")}
-                  <select value={mapping.estimate ?? ""} onChange={(event) => updateMapping("estimate", event.target.value)}>
-                    <option value="">{t("action.skip")}</option>
-                    {csvData.headers.map((header, index) => (
-                      <option key={`${index}-${header}`} value={index}>
-                        {formatOptionLabel(header, index, t("import.unnamedColumn"))}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
+              <Stack gap="md">
+                <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                  <Select
+                    label={t("common.title")}
+                    placeholder={t("action.chooseColumn")}
+                    data={columnOptions}
+                    value={mapping.title === null ? null : String(mapping.title)}
+                    onChange={(value) => updateMapping("title", value)}
+                    required
+                  />
+                  <Select
+                    label={t("common.description")}
+                    placeholder={t("action.skip")}
+                    data={columnOptions}
+                    value={mapping.description === null ? null : String(mapping.description)}
+                    onChange={(value) => updateMapping("description", value)}
+                    clearable
+                  />
+                  <Select
+                    label={t("common.link")}
+                    placeholder={t("action.skip")}
+                    data={columnOptions}
+                    value={mapping.link === null ? null : String(mapping.link)}
+                    onChange={(value) => updateMapping("link", value)}
+                    clearable
+                  />
+                  <Select
+                    label={t("common.estimate")}
+                    placeholder={t("action.skip")}
+                    data={columnOptions}
+                    value={mapping.estimate === null ? null : String(mapping.estimate)}
+                    onChange={(value) => updateMapping("estimate", value)}
+                    clearable
+                  />
+                </SimpleGrid>
+                <TextInput
+                  label={t("field.linkPattern")}
+                  value={linkPattern}
+                  onChange={(event) => setLinkPattern(event.target.value)}
+                  placeholder={t("placeholder.linkPattern")}
+                  description={t("hint.linkPattern")}
+                  inputMode="url"
+                  disabled={mapping.link === null}
+                />
+              </Stack>
 
-              <div className="import-preview">
-                <div className="import-preview-header">
-                  <strong>{t("common.storiesCount", { count: mappedIssues.length })}</strong>
-                  <span>{t("common.csvRows", { count: csvData.rows.length })}</span>
-                </div>
+              <Paper withBorder bg="gray.0" p="md">
+                <Stack gap="xs">
+                  <Group justify="space-between" gap="sm">
+                    <Text fw={700}>{t("common.storiesCount", { count: mappedIssues.length })}</Text>
+                    <Text c="dimmed" fz="xs" fw={700}>
+                      {t("common.csvRows", { count: csvData.rows.length })}
+                    </Text>
+                  </Group>
                 {previewRows.map((issue, index) => (
-                  <div className="import-preview-row" key={`${issue.title}-${index}`}>
-                    <strong>{issue.title}</strong>
-                    <span>{issue.estimate || issue.link || issue.description || t("common.noOptionalFields")}</span>
-                  </div>
+                    <Paper key={`${issue.title}-${index}`} p="sm">
+                      <Group justify="space-between" gap="sm" wrap="nowrap">
+                        <Text fw={700} truncate>
+                          {issue.title}
+                        </Text>
+                        <Text c="dimmed" fz="xs" fw={700} truncate>
+                          {issue.estimate || issue.link || issue.description || t("common.noOptionalFields")}
+                        </Text>
+                      </Group>
+                    </Paper>
                 ))}
-              </div>
+                </Stack>
+              </Paper>
             </>
           ) : null}
 
-          <div className="modal-actions">
-            <button className="ghost-action" type="button" onClick={close}>
+          <Group justify="flex-end">
+            <Button variant="default" type="button" onClick={close}>
               {t("action.cancel")}
-            </button>
-            <button className={`primary-action ${isSaving ? "is-syncing" : ""}`} type="submit" disabled={isSaving || !csvData}>
-              {isSaving ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <FileUp size={18} aria-hidden="true" />}
+            </Button>
+            <Button type="submit" disabled={!csvData} loading={isSaving} leftSection={<FileUp size={18} aria-hidden="true" />}>
               {t("action.import")}
-            </button>
-          </div>
-        </form>
-      </section>
-    </div>
+            </Button>
+          </Group>
+        </Stack>
+      </form>
+    </Modal>
   );
 }

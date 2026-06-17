@@ -17,6 +17,8 @@
   "license": "MIT",
   "type": "module",
   "dependencies": {
+    "@mantine/core": "^9.3.2",
+    "@mantine/hooks": "^9.3.2",
     "@supabase/supabase-js": "^2.108.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",

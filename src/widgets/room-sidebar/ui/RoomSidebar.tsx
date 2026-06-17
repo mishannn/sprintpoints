@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Download, ExternalLink, Loader2, Pencil, Plus, Settings, Trash2, Upload, Users } from "lucide-react";
+import { ActionIcon, Badge, Box, Button, Group, Loader, Paper, ScrollArea, Stack, Text, Title, Tooltip, UnstyledButton } from "@mantine/core";
+import { Download, ExternalLink, Pencil, Plus, Settings, Trash2, Upload, Users } from "lucide-react";
 import type { Issue, Participant, Vote } from "../../../entities/room/model/types";
 import type { IssueDetailsInput, IssueImportInput } from "../../../features/manage-issues/model/issues";
 import { downloadJiraCsv } from "../../../features/manage-issues/model/jiraCsv";
@@ -68,136 +69,155 @@ export function RoomSidebar({
   };
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-section">
-        <div className="section-title story-section-title">
-          <Users size={18} aria-hidden="true" />
-          <h2>{t("label.people")}</h2>
-        </div>
-        <div className="people-list">
+    <Stack component="aside" gap="lg">
+      <Paper withBorder p="lg">
+        <Stack gap="md">
+          <Group gap="xs">
+            <Users size={18} aria-hidden="true" />
+            <Title order={2} fz="lg">
+              {t("label.people")}
+            </Title>
+          </Group>
           {participants.map((participant) => {
             const voted = activeVotes.some((vote) => vote.participant_id === participant.id);
             return (
-              <div className="person-row" key={participant.id}>
-                <div>
-                  <strong>{participant.name}</strong>
-                  <span>
+              <Paper key={participant.id} bg="gray.0" p="sm" radius="md">
+                <Group justify="space-between" gap="sm" wrap="nowrap">
+                  <Box miw={0}>
+                    <Text fw={700} truncate>
+                      {participant.name}
+                    </Text>
+                    <Text c="dimmed" fz="xs" fw={700} truncate>
                     {participant.is_spectator ? t("participant.spectator") : voted ? t("participant.voted") : t("participant.waiting")}
-                  </span>
-                </div>
+                    </Text>
+                  </Box>
                 {!participant.is_spectator ? (
-                  <div className={`vote-dot ${voted ? "done" : ""}`} aria-label={voted ? t("participant.voted") : t("aria.notVoted")} />
+                    <Box
+                      aria-label={voted ? t("participant.voted") : t("aria.notVoted")}
+                      bg={voted ? "gray.8" : "gray.3"}
+                      h={12}
+                      w={12}
+                      style={{ borderRadius: "50%", flex: "0 0 auto" }}
+                    />
                 ) : null}
-              </div>
+                </Group>
+              </Paper>
             );
           })}
-        </div>
-      </div>
+        </Stack>
+      </Paper>
 
-      <div className="sidebar-section">
-        <div className="section-title story-section-title">
-          <span className="section-title-label">
+      <Paper withBorder p="lg">
+        <Stack gap="md">
+          <Group justify="space-between" align="center" gap="sm">
+            <Group gap="xs">
             <Settings size={18} aria-hidden="true" />
-            <h2>{t("label.stories")}</h2>
-          </span>
+              <Title order={2} fz="lg">
+                {t("label.stories")}
+              </Title>
+            </Group>
           {isHost ? (
-            <div className="story-header-actions">
-              <button
-                className="icon-button"
-                type="button"
-                onClick={() => setIsImportIssuesOpen(true)}
-                title={t("action.import")}
-                aria-label={t("action.import")}
-              >
-                <Upload size={17} aria-hidden="true" />
-              </button>
-              <button
-                className="icon-button"
-                type="button"
-                onClick={() => downloadJiraCsv(issues, roomName)}
-                disabled={issues.length === 0}
-                title={t("action.export")}
-                aria-label={t("action.export")}
-              >
-                <Download size={17} aria-hidden="true" />
-              </button>
-            </div>
+              <Group gap={8}>
+                <Tooltip label={t("action.import")}>
+                  <ActionIcon variant="default" type="button" onClick={() => setIsImportIssuesOpen(true)} aria-label={t("action.import")}>
+                    <Upload size={17} aria-hidden="true" />
+                  </ActionIcon>
+                </Tooltip>
+                <Tooltip label={t("action.export")}>
+                  <ActionIcon
+                    variant="default"
+                    type="button"
+                    onClick={() => downloadJiraCsv(issues, roomName)}
+                    disabled={issues.length === 0}
+                    aria-label={t("action.export")}
+                  >
+                    <Download size={17} aria-hidden="true" />
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
           ) : null}
-        </div>
-        <div className="issue-list">
-          {issues.map((issue) => {
-            const link = issue.link ?? "";
+          </Group>
+          <ScrollArea.Autosize mah={520} type="auto">
+            <Stack gap="xs" pr={4}>
+              {issues.map((issue) => {
+                const link = issue.link ?? "";
 
             return (
-              <div className={`issue-card ${issue.id === activeIssue?.id ? "active" : ""}`} key={issue.id}>
-                <button type="button" className="issue-open-button" onClick={() => onActivateIssue(issue)} disabled={!isHost}>
-                  <span className="issue-row-main">
-                    <span className="issue-title">{issue.title}</span>
-                    {link ? <span className="issue-link-text">{link}</span> : null}
-                  </span>
-                </button>
+                  <Paper key={issue.id} withBorder={issue.id === activeIssue?.id} bg={issue.id === activeIssue?.id ? "white" : "gray.0"} p="xs" radius="md">
+                    <Stack gap={6}>
+                      <UnstyledButton type="button" onClick={() => onActivateIssue(issue)} disabled={!isHost} p={6}>
+                        <Stack gap={4}>
+                          <Text fw={500} lineClamp={2}>
+                            {issue.title}
+                          </Text>
+                          {link ? (
+                            <Text c="dimmed" fz="xs" lineClamp={2}>
+                              {link}
+                            </Text>
+                          ) : null}
+                        </Stack>
+                      </UnstyledButton>
                 {issue.estimate || link || isHost ? (
-                  <div className="issue-card-footer">
-                    <span className="issue-row-side">
-                      {pendingSync.activeIssueId === issue.id ? <Loader2 className="spin sync-spinner" size={15} aria-hidden="true" /> : null}
-                      {issue.estimate ? <span className="issue-estimate">{issue.estimate}</span> : null}
-                    </span>
-                    <div className="issue-card-actions">
+                        <Group justify="space-between" gap="xs" pl={6}>
+                          <Group gap={6}>
+                            {pendingSync.activeIssueId === issue.id ? <Loader size="xs" aria-hidden="true" /> : null}
+                            {issue.estimate ? <Badge variant="default">{issue.estimate}</Badge> : null}
+                          </Group>
+                          <Group gap={5}>
                       {link ? (
-                        <a
-                          className="icon-button compact-button"
-                          href={getExternalHref(link)}
-                          target="_blank"
-                          rel="noreferrer"
-                          aria-label={t("action.openStoryLink")}
-                        >
-                          <ExternalLink size={16} aria-hidden="true" />
-                        </a>
+                              <Tooltip label={t("action.openStoryLink")}>
+                                <ActionIcon component="a" variant="default" href={getExternalHref(link)} target="_blank" rel="noreferrer" aria-label={t("action.openStoryLink")}>
+                                  <ExternalLink size={16} aria-hidden="true" />
+                                </ActionIcon>
+                              </Tooltip>
                       ) : null}
                       {isHost ? (
                         <>
-                          <button
-                            className="icon-button compact-button"
+                                <ActionIcon
+                                  variant="default"
                             type="button"
                             onClick={() => setEditingIssue(issue)}
                             aria-label={t("action.editStory")}
                             disabled={pendingSync.editIssueId === issue.id || pendingSync.deleteIssueId === issue.id}
                           >
                             {pendingSync.editIssueId === issue.id ? (
-                              <Loader2 className="spin" size={16} aria-hidden="true" />
+                                    <Loader size="xs" aria-hidden="true" />
                             ) : (
                               <Pencil size={16} aria-hidden="true" />
                             )}
-                          </button>
-                          <button
-                            className="icon-button compact-button danger-button"
+                                </ActionIcon>
+                                <ActionIcon
+                                  variant="default"
+                                  color="red"
                             type="button"
                             onClick={() => handleDeleteIssue(issue)}
                             aria-label={t("action.deleteStory")}
                             disabled={pendingSync.deleteIssueId === issue.id || pendingSync.editIssueId === issue.id}
                           >
                             {pendingSync.deleteIssueId === issue.id ? (
-                              <Loader2 className="spin" size={16} aria-hidden="true" />
+                                    <Loader size="xs" aria-hidden="true" />
                             ) : (
                               <Trash2 size={16} aria-hidden="true" />
                             )}
-                          </button>
+                                </ActionIcon>
                         </>
                       ) : null}
-                    </div>
-                  </div>
+                          </Group>
+                        </Group>
                 ) : null}
-              </div>
+                    </Stack>
+                  </Paper>
             );
           })}
-        </div>
+            </Stack>
+          </ScrollArea.Autosize>
         {isHost ? (
-          <button className="secondary-action story-add-button" type="button" onClick={() => setIsAddIssueOpen(true)}>
-            {pendingSync.addIssue ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <Plus size={18} aria-hidden="true" />}
+            <Button variant="light" type="button" onClick={() => setIsAddIssueOpen(true)} leftSection={pendingSync.addIssue ? <Loader size="xs" /> : <Plus size={18} aria-hidden="true" />}>
             {t("action.addStory")}
-          </button>
+            </Button>
         ) : null}
-      </div>
+        </Stack>
+      </Paper>
 
       <AddIssueModal
         issue={editingIssue}
@@ -212,6 +232,6 @@ export function RoomSidebar({
         onClose={() => setIsImportIssuesOpen(false)}
         onSubmit={onImportIssues}
       />
-    </aside>
+    </Stack>
   );
 }

@@ -1,5 +1,6 @@
 import type { FormEvent } from "react";
-import { Loader2, LogIn, Plus, Sparkles, UserPlus } from "lucide-react";
+import { Alert, Badge, Box, Button, Checkbox, Container, Group, Loader, Paper, SimpleGrid, Stack, Text, TextInput, ThemeIcon, Title } from "@mantine/core";
+import { LogIn, Plus, Sparkles, UserPlus } from "lucide-react";
 import type { Notice } from "../../../entities/room/model/types";
 import { LanguageSelector } from "../../../shared/i18n/LanguageSelector";
 import { useI18n } from "../../../shared/i18n";
@@ -14,6 +15,7 @@ type LobbyPageProps = {
 
 export function LobbyPage({ initialRoomCode, loading, notice, onCreateRoom, onJoinRoom }: LobbyPageProps) {
   const { t } = useI18n();
+  const noticeColor = notice?.kind === "error" ? "red" : notice?.kind === "success" ? "gray" : "gray";
 
   async function handleCreateRoom(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,71 +36,91 @@ export function LobbyPage({ initialRoomCode, loading, notice, onCreateRoom, onJo
   }
 
   return (
-    <main className="shell landing">
-      <div className="landing-header">
-        <div className="brand-identity">
-          <div className="brand-mark">
+    <Box component="main" bg="gray.0" mih="100vh" py={{ base: "lg", md: 36 }} px={{ base: "md", md: 36 }}>
+      <Container size={1180} px={0}>
+        <Group justify="space-between" gap="md" mb={36}>
+          <Group gap="sm">
+            <ThemeIcon size={48} radius="md" color="gray">
             <Sparkles size={24} aria-hidden="true" />
-          </div>
-          <span>{t("brand.name")}</span>
-        </div>
-        <LanguageSelector />
-      </div>
-      <section className="intro">
-        <h1>{t("lobby.heading")}</h1>
-        <p>{t("lobby.supporting")}</p>
-        <div className="feature-strip">
-          <span>{t("feature.realtimeRooms")}</span>
-          <span>{t("feature.hiddenVotes")}</span>
-          <span>{t("feature.storyQueue")}</span>
-        </div>
-      </section>
+            </ThemeIcon>
+            <Text fw={800} c="gray.8">
+              {t("brand.name")}
+            </Text>
+          </Group>
+          <LanguageSelector />
+        </Group>
 
-      <section className="entry-grid">
-        <form className="panel" onSubmit={handleCreateRoom}>
-          <div className="panel-heading">
-            <UserPlus size={20} aria-hidden="true" />
-            <h2>{t("action.createRoom")}</h2>
-          </div>
-          <label>
-            {t("field.roomName")}
-            <input name="roomName" placeholder={t("lobby.placeholderRoomName")} autoComplete="off" />
-          </label>
-          <label>
-            {t("field.hostName")}
-            <input name="hostName" placeholder={t("lobby.placeholderHostName")} autoComplete="name" required />
-          </label>
-          <button className="primary-action" type="submit" disabled={loading}>
-            {loading ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <Plus size={18} aria-hidden="true" />}
-            {t("action.createRoom")}
-          </button>
-        </form>
+        <SimpleGrid cols={{ base: 1, md: 2 }} spacing={36} verticalSpacing={28}>
+          <Stack gap="xl">
+            <Stack gap="md">
+              <Title order={1} fz={{ base: 44, sm: 58, md: 74 }} lh={0.96} maw={620}>
+                {t("lobby.heading")}
+              </Title>
+              <Text c="dimmed" fz="lg" lh={1.6} maw={560}>
+                {t("lobby.supporting")}
+              </Text>
+            </Stack>
+            <Group gap="xs">
+              <Badge variant="outline" color="gray" size="lg">
+                {t("feature.realtimeRooms")}
+              </Badge>
+              <Badge variant="outline" color="gray" size="lg">
+                {t("feature.hiddenVotes")}
+              </Badge>
+              <Badge variant="outline" color="gray" size="lg">
+                {t("feature.storyQueue")}
+              </Badge>
+            </Group>
+          </Stack>
 
-        <form className="panel" onSubmit={handleJoinRoom}>
-          <div className="panel-heading">
-            <LogIn size={20} aria-hidden="true" />
-            <h2>{t("action.joinRoom")}</h2>
-          </div>
-          <label>
-            {t("field.roomCode")}
-            <input name="roomCode" placeholder={t("placeholder.roomCode")} defaultValue={initialRoomCode} autoComplete="off" required />
-          </label>
-          <label>
-            {t("field.participantName")}
-            <input name="participantName" placeholder={t("lobby.placeholderParticipantName")} autoComplete="name" required />
-          </label>
-          <label className="checkbox-line">
-            <input name="isSpectator" type="checkbox" />
-            {t("field.spectator")}
-          </label>
-          <button className="secondary-action" type="submit" disabled={loading}>
-            {loading ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <LogIn size={18} aria-hidden="true" />}
-            {t("action.joinRoom")}
-          </button>
-        </form>
-      </section>
+          <Stack gap="md">
+            <Paper component="form" withBorder shadow="xl" p="xl" onSubmit={handleCreateRoom}>
+              <Stack gap="md">
+                <Group gap="xs" c="gray.8">
+                  <UserPlus size={20} aria-hidden="true" />
+                  <Title order={2} fz="lg">
+                    {t("action.createRoom")}
+                  </Title>
+                </Group>
+                <TextInput name="roomName" label={t("field.roomName")} placeholder={t("lobby.placeholderRoomName")} autoComplete="off" />
+                <TextInput name="hostName" label={t("field.hostName")} placeholder={t("lobby.placeholderHostName")} autoComplete="name" required />
+                <Button type="submit" disabled={loading} leftSection={loading ? <Loader size="xs" color="white" /> : <Plus size={18} aria-hidden="true" />} fullWidth>
+                  {t("action.createRoom")}
+                </Button>
+              </Stack>
+            </Paper>
 
-      {notice ? <p className={`notice ${notice.kind}`}>{notice.message}</p> : null}
-    </main>
+            <Paper component="form" withBorder shadow="xl" p="xl" onSubmit={handleJoinRoom}>
+              <Stack gap="md">
+                <Group gap="xs" c="gray.8">
+                  <LogIn size={20} aria-hidden="true" />
+                  <Title order={2} fz="lg">
+                    {t("action.joinRoom")}
+                  </Title>
+                </Group>
+                <TextInput name="roomCode" label={t("field.roomCode")} placeholder={t("placeholder.roomCode")} defaultValue={initialRoomCode} autoComplete="off" required />
+                <TextInput name="participantName" label={t("field.participantName")} placeholder={t("lobby.placeholderParticipantName")} autoComplete="name" required />
+                <Checkbox name="isSpectator" label={t("field.spectator")} />
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  variant="light"
+                  leftSection={loading ? <Loader size="xs" /> : <LogIn size={18} aria-hidden="true" />}
+                  fullWidth
+                >
+                  {t("action.joinRoom")}
+                </Button>
+              </Stack>
+            </Paper>
+          </Stack>
+        </SimpleGrid>
+
+        {notice ? (
+          <Alert color={noticeColor} mt="lg">
+            {notice.message}
+          </Alert>
+        ) : null}
+      </Container>
+    </Box>
   );
 }

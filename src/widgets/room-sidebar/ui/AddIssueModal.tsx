@@ -1,6 +1,7 @@
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
-import { Loader2, Pencil, Plus, X } from "lucide-react";
+import { Button, Group, Modal, Stack, Text, Textarea, TextInput } from "@mantine/core";
+import { Pencil, Plus } from "lucide-react";
 import type { Issue } from "../../../entities/room/model/types";
 import type { IssueDetailsInput } from "../../../features/manage-issues/model/issues";
 import { useI18n } from "../../../shared/i18n";
@@ -40,15 +41,6 @@ export function AddIssueModal({ issue: editingIssue, isOpen, isSaving, onClose, 
     }
 
     setIssue(getInitialIssue(editingIssue));
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [editingIssue, isOpen, onClose]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -61,70 +53,58 @@ export function AddIssueModal({ issue: editingIssue, isOpen, isSaving, onClose, 
     }
   }
 
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
-      <section className="modal-panel" role="dialog" aria-modal="true" aria-labelledby="add-story-title" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="modal-header">
-          <div>
-            <span className="eyebrow">{t("common.story")}</span>
-            <h2 id="add-story-title">{isEditing ? t("modal.editStoryTitle") : t("modal.addStoryTitle")}</h2>
-          </div>
-          <button className="icon-button" type="button" onClick={onClose} aria-label={t("action.closeAddStoryForm")}>
-            <X size={20} aria-hidden="true" />
-          </button>
-        </div>
-
-        <form className="story-form" onSubmit={handleSubmit}>
-          <label>
-            {t("common.title")}
-            <input
+    <Modal
+      opened={isOpen}
+      onClose={onClose}
+      title={
+        <Stack gap={2}>
+          <Text c="dimmed" fz="xs" fw={900} tt="uppercase">
+            {t("common.story")}
+          </Text>
+          <Text fw={700} fz="xl">
+            {isEditing ? t("modal.editStoryTitle") : t("modal.addStoryTitle")}
+          </Text>
+        </Stack>
+      }
+      aria-label={isEditing ? t("modal.editStoryTitle") : t("modal.addStoryTitle")}
+      centered
+    >
+      <form onSubmit={handleSubmit}>
+        <Stack gap="md">
+          <TextInput
+            label={t("common.title")}
               value={issue.title}
               onChange={(event) => setIssue((current) => ({ ...current, title: event.target.value }))}
               placeholder={t("placeholder.title")}
               autoFocus
               required
             />
-          </label>
-          <label>
-            {t("common.link")}
-            <input
+          <TextInput
+            label={t("common.link")}
               value={issue.link}
               onChange={(event) => setIssue((current) => ({ ...current, link: event.target.value }))}
               placeholder={t("placeholder.link")}
               inputMode="url"
             />
-          </label>
-          <label>
-            {t("common.description")}
-            <textarea
+          <Textarea
+            label={t("common.description")}
               value={issue.description}
               onChange={(event) => setIssue((current) => ({ ...current, description: event.target.value }))}
               placeholder={t("placeholder.description")}
               rows={5}
             />
-          </label>
 
-          <div className="modal-actions">
-            <button className="ghost-action" type="button" onClick={onClose}>
+          <Group justify="flex-end">
+            <Button variant="default" type="button" onClick={onClose}>
               {t("action.cancel")}
-            </button>
-            <button className={`primary-action ${isSaving ? "is-syncing" : ""}`} type="submit" disabled={isSaving}>
-              {isSaving ? (
-                <Loader2 className="spin" size={18} aria-hidden="true" />
-              ) : isEditing ? (
-                <Pencil size={18} aria-hidden="true" />
-              ) : (
-                <Plus size={18} aria-hidden="true" />
-              )}
+            </Button>
+            <Button type="submit" loading={isSaving} leftSection={isEditing ? <Pencil size={18} aria-hidden="true" /> : <Plus size={18} aria-hidden="true" />}>
               {isEditing ? t("action.saveStory") : t("action.addStory")}
-            </button>
-          </div>
-        </form>
-      </section>
-    </div>
+            </Button>
+          </Group>
+        </Stack>
+      </form>
+    </Modal>
   );
 }

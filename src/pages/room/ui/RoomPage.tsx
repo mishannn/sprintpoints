@@ -1,4 +1,5 @@
-import { Check, Clipboard, Loader2, RefreshCcw } from "lucide-react";
+import { ActionIcon, Alert, Box, Button, Container, Grid, Group, Loader, Stack, Text, Title, Tooltip } from "@mantine/core";
+import { Check, Clipboard, RefreshCcw } from "lucide-react";
 import type { Issue, Notice, Participant, RoomState, Vote } from "../../../entities/room/model/types";
 import type { IssueDetailsInput, IssueImportInput } from "../../../features/manage-issues/model/issues";
 import type { PendingSync } from "../../../features/room-session/model/useRoomSession";
@@ -64,73 +65,90 @@ export function RoomPage({
 }: RoomPageProps) {
   const { t } = useI18n();
   const { copied, copyInviteLink } = useCopyInviteLink();
+  const noticeColor = notice?.kind === "error" ? "red" : notice?.kind === "success" ? "gray" : "gray";
 
   const handleCopyInviteLink = () => {
     void copyInviteLink(state.room.code);
   };
 
   return (
-    <main className="workspace">
-      <header className="topbar">
-        <div>
-          <span className="eyebrow">{t("common.room", { code: state.room.code })}</span>
-          <h1>{state.room.name}</h1>
-        </div>
-        <div className="topbar-actions">
-          <LanguageSelector />
-          <button
-            className="icon-button"
-            type="button"
-            onClick={handleCopyInviteLink}
-            title={t("action.copyInviteLink")}
-            aria-label={t("action.copyInviteLink")}
-          >
-            {copied ? <Check size={19} aria-hidden="true" /> : <Clipboard size={19} aria-hidden="true" />}
-          </button>
-          <button className="ghost-action" type="button" onClick={onRefreshRoom}>
-            {pendingSync.refreshRoom ? <Loader2 className="spin" size={17} aria-hidden="true" /> : <RefreshCcw size={17} aria-hidden="true" />}
-            {t("action.sync")}
-          </button>
-        </div>
-      </header>
+    <Box component="main" bg="gray.0" mih="100vh" p={{ base: "md", md: "xl" }}>
+      <Container size={1500} px={0}>
+        <Group component="header" justify="space-between" align="flex-start" gap="md" mb="lg">
+          <Stack gap={4}>
+            <Text c="dimmed" fz="xs" fw={900} tt="uppercase">
+              {t("common.room", { code: state.room.code })}
+            </Text>
+            <Title order={1} fz={{ base: 26, md: 31 }}>
+              {state.room.name}
+            </Title>
+          </Stack>
+          <Group gap="xs">
+            <LanguageSelector />
+            <Tooltip label={t("action.copyInviteLink")}>
+              <ActionIcon variant="default" size={36} type="button" onClick={handleCopyInviteLink} aria-label={t("action.copyInviteLink")}>
+                {copied ? <Check size={19} aria-hidden="true" /> : <Clipboard size={19} aria-hidden="true" />}
+              </ActionIcon>
+            </Tooltip>
+            <Button
+              variant="default"
+              type="button"
+              onClick={onRefreshRoom}
+              leftSection={pendingSync.refreshRoom ? <Loader size="xs" /> : <RefreshCcw size={17} aria-hidden="true" />}
+            >
+              {t("action.sync")}
+            </Button>
+          </Group>
+        </Group>
 
-      {notice ? <p className={`notice ${notice.kind}`}>{notice.message}</p> : null}
+        {notice ? (
+          <Alert color={noticeColor} mb="lg">
+            {notice.message}
+          </Alert>
+        ) : null}
 
-      <section className="room-layout">
-        <RoomSidebar
-          activeIssue={activeIssue}
-          activeVotes={activeVotes}
-          isHost={isHost}
-          issues={state.issues}
-          pendingSync={pendingSync}
-          participants={state.participants}
-          roomName={state.room.name}
-          onActivateIssue={onActivateIssue}
-          onAddIssue={onAddIssue}
-          onDeleteIssue={onDeleteIssue}
-          onEditIssue={onEditIssue}
-          onImportIssues={onImportIssues}
-        />
+        <Grid gap="lg">
+          <Grid.Col span={{ base: 12, md: 4, xl: 3 }}>
+            <RoomSidebar
+              activeIssue={activeIssue}
+              activeVotes={activeVotes}
+              isHost={isHost}
+              issues={state.issues}
+              pendingSync={pendingSync}
+              participants={state.participants}
+              roomName={state.room.name}
+              onActivateIssue={onActivateIssue}
+              onAddIssue={onAddIssue}
+              onDeleteIssue={onDeleteIssue}
+              onEditIssue={onEditIssue}
+              onImportIssues={onImportIssues}
+            />
+          </Grid.Col>
 
-        <VotingTable
-          activeIssue={activeIssue}
-          activeVotes={activeVotes}
-          currentParticipant={currentParticipant}
-          currentVote={currentVote}
-          isHost={isHost}
-          pendingSync={pendingSync}
-          room={state.room}
-          summary={summary}
-          votersCount={votersCount}
-          voteGroups={voteGroups}
-          onCastVote={onCastVote}
-          onRevealVotes={onRevealVotes}
-          onResetVoting={onResetVoting}
-          onSetEstimate={onSetEstimate}
-        />
+          <Grid.Col span={{ base: 12, md: 8, xl: 6 }}>
+            <VotingTable
+              activeIssue={activeIssue}
+              activeVotes={activeVotes}
+              currentParticipant={currentParticipant}
+              currentVote={currentVote}
+              isHost={isHost}
+              pendingSync={pendingSync}
+              room={state.room}
+              summary={summary}
+              votersCount={votersCount}
+              voteGroups={voteGroups}
+              onCastVote={onCastVote}
+              onRevealVotes={onRevealVotes}
+              onResetVoting={onResetVoting}
+              onSetEstimate={onSetEstimate}
+            />
+          </Grid.Col>
 
-        <InviteCard code={state.room.code} copied={copied} onCopyInviteLink={handleCopyInviteLink} />
-      </section>
-    </main>
+          <Grid.Col span={{ base: 12, xl: 3 }}>
+            <InviteCard code={state.room.code} copied={copied} onCopyInviteLink={handleCopyInviteLink} />
+          </Grid.Col>
+        </Grid>
+      </Container>
+    </Box>
   );
 }

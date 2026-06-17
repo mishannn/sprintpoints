@@ -1,3 +1,4 @@
+import { Button, Code, Paper, Stack, Text, Title } from "@mantine/core";
 import { Check, Clipboard, Link } from "lucide-react";
 import { useI18n } from "../../../shared/i18n";
 
@@ -11,17 +12,22 @@ export function InviteCard({ code, copied, onCopyInviteLink }: InviteCardProps) 
   const { t } = useI18n();
 
   return (
-    <aside className="share-panel">
-      <div className="share-card">
+    <Paper component="aside" withBorder p="lg">
+      <Stack gap="md">
         <Link size={22} aria-hidden="true" />
-        <h2>{t("label.inviteTeammates")}</h2>
-        <p>{t("share.description")}</p>
-        <div className="room-code">{code}</div>
-        <button className="secondary-action" type="button" onClick={onCopyInviteLink}>
-          {copied ? <Check size={18} aria-hidden="true" /> : <Clipboard size={18} aria-hidden="true" />}
+        <Title order={2} fz="lg">
+          {t("label.inviteTeammates")}
+        </Title>
+        <Text c="dimmed" lh={1.5}>
+          {t("share.description")}
+        </Text>
+        <Code block fz={27} fw={900} ta="center" py="lg">
+          {code}
+        </Code>
+        <Button variant="light" type="button" onClick={onCopyInviteLink} leftSection={copied ? <Check size={18} aria-hidden="true" /> : <Clipboard size={18} aria-hidden="true" />}>
           {copied ? t("action.copied") : t("action.copyLink")}
-        </button>
-      </div>
-    </aside>
+        </Button>
+      </Stack>
+    </Paper>
   );
 }

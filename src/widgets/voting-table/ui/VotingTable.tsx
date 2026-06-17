@@ -1,4 +1,5 @@
-import { Coffee, ExternalLink, Eye, EyeOff, Loader2, RefreshCcw } from "lucide-react";
+import { Anchor, Badge, Box, Button, Center, Group, Loader, Paper, Progress, Select, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import { Coffee, ExternalLink, Eye, EyeOff, RefreshCcw } from "lucide-react";
 import type { Issue, Participant, Room, Vote } from "../../../entities/room/model/types";
 import type { PendingSync } from "../../../features/room-session/model/useRoomSession";
 import { useI18n } from "../../../shared/i18n";
@@ -52,128 +53,169 @@ export function VotingTable({
   const activeStoryLink = activeLink.trim() ? getExternalHref(activeLink.trim()) : null;
 
   return (
-    <section className="table">
-      <div className="story-header">
-        <div>
-          <span className="eyebrow">{t("label.activeStory")}</span>
-          <h2>{activeIssue?.title ?? t("state.noStorySelected")}</h2>
-        </div>
-        <div className="story-state">
-          {room.revealed ? <Eye size={18} aria-hidden="true" /> : <EyeOff size={18} aria-hidden="true" />}
+    <Paper component="section" withBorder p="xl">
+      <Stack gap="lg">
+        <Group justify="space-between" align="flex-start" gap="md">
+          <Box>
+            <Text c="dimmed" fz="xs" fw={900} tt="uppercase">
+              {t("label.activeStory")}
+            </Text>
+            <Title order={2} fz={{ base: 24, md: 27 }}>
+              {activeIssue?.title ?? t("state.noStorySelected")}
+            </Title>
+          </Box>
+          <Badge variant="light" size="lg" leftSection={room.revealed ? <Eye size={18} aria-hidden="true" /> : <EyeOff size={18} aria-hidden="true" />}>
           {room.revealed ? t("state.revealed") : t("state.voting")}
-        </div>
-      </div>
+          </Badge>
+        </Group>
 
       {activeIssue && (activeDescription || activeStoryLink) ? (
-        <div className="story-details">
+          <Paper withBorder bg="gray.0" p="md">
+            <Stack gap="md">
           {activeStoryLink ? (
-            <div className="story-detail-row">
-              <span>{t("common.link")}</span>
-              <a href={activeStoryLink} target="_blank" rel="noreferrer">
+                <Stack gap={4}>
+                  <Text c="dimmed" fz="xs" fw={700} tt="uppercase">
+                    {t("common.link")}
+                  </Text>
+                  <Anchor href={activeStoryLink} target="_blank" rel="noreferrer">
+                    <Group gap={7} wrap="nowrap">
                 {activeLink}
                 <ExternalLink size={16} aria-hidden="true" />
-              </a>
-            </div>
+                    </Group>
+                  </Anchor>
+                </Stack>
           ) : null}
           {activeDescription ? (
-            <div className="story-detail-row">
-              <span>{t("common.description")}</span>
-              <p>{activeDescription}</p>
-            </div>
+                <Stack gap={4}>
+                  <Text c="dimmed" fz="xs" fw={700} tt="uppercase">
+                    {t("common.description")}
+                  </Text>
+                  <Text lh={1.55} style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+                    {activeDescription}
+                  </Text>
+                </Stack>
           ) : null}
-        </div>
+            </Stack>
+          </Paper>
       ) : null}
 
-      <div className="cards-grid" aria-label={t("aria.voteCards")}>
+        <SimpleGrid cols={{ base: 3, sm: 5, lg: 6 }} spacing="xs" aria-label={t("aria.voteCards")}>
         {room.card_set.map((card) => (
-          <button
+            <Button
             key={card}
             type="button"
-            className={`card-button ${currentVote?.value === card ? "selected" : ""}`}
+              variant={currentVote?.value === card ? "light" : "default"}
+              h={112}
+              pos="relative"
             onClick={() => onCastVote(card)}
             disabled={!activeIssue || currentParticipant.is_spectator || room.revealed}
+              fullWidth
             aria-label={card}
           >
-            {card === "Coffee" ? <Coffee size={34} strokeWidth={2.4} aria-hidden="true" /> : card}
-            {pendingSync.voteValue === card ? <Loader2 className="spin card-sync" size={18} aria-hidden="true" /> : null}
-          </button>
+              <Center h="100%">
+                {card === "Coffee" ? (
+                  <Coffee size={34} strokeWidth={2.4} aria-hidden="true" />
+                ) : (
+                  <Text fz={28} fw={900}>
+                    {card}
+                  </Text>
+                )}
+              </Center>
+              {pendingSync.voteValue === card ? <Loader size={12} pos="absolute" top={8} right={8} aria-hidden="true" /> : null}
+            </Button>
         ))}
-      </div>
+        </SimpleGrid>
 
-      <div className="status-grid">
-        <div className="metric">
-          <span>{t("common.votes")}</span>
-          <strong>
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+          <Paper withBorder bg="gray.0" p="md">
+            <Text c="dimmed" fz="xs" fw={900} tt="uppercase">
+              {t("common.votes")}
+            </Text>
+            <Text fw={800} fz={25}>
             {activeVotes.length}/{votersCount}
-          </strong>
-        </div>
-        <div className="metric">
-          <span>{t("common.average")}</span>
-          <strong>{summary ? summary.average.toFixed(1) : "-"}</strong>
-        </div>
-        <div className="metric">
-          <span>{t("common.range")}</span>
-          <strong>{summary ? `${summary.min}-${summary.max}` : "-"}</strong>
-        </div>
-      </div>
+            </Text>
+          </Paper>
+          <Paper withBorder bg="gray.0" p="md">
+            <Text c="dimmed" fz="xs" fw={900} tt="uppercase">
+              {t("common.average")}
+            </Text>
+            <Text fw={800} fz={25}>
+              {summary ? summary.average.toFixed(1) : "-"}
+            </Text>
+          </Paper>
+          <Paper withBorder bg="gray.0" p="md">
+            <Text c="dimmed" fz="xs" fw={900} tt="uppercase">
+              {t("common.range")}
+            </Text>
+            <Text fw={800} fz={25}>
+              {summary ? `${summary.min}-${summary.max}` : "-"}
+            </Text>
+          </Paper>
+        </SimpleGrid>
 
       {room.revealed ? (
-        <div className="results">
+          <Paper withBorder bg="gray.0">
+            <Stack gap={0}>
           {Object.entries(voteGroups).map(([value, count]) => (
-            <div className="result-row" key={value}>
-              <span>{value}</span>
-              <div className="result-bar">
-                <i style={{ width: `${(count / Math.max(1, activeVotes.length)) * 100}%` }} />
-              </div>
-              <strong>{count}</strong>
-            </div>
+                <Group key={value} gap="sm" p="sm" wrap="nowrap">
+                  <Text fw={900} w={52}>
+                    {value}
+                  </Text>
+                  <Progress value={(count / Math.max(1, activeVotes.length)) * 100} flex={1} />
+                  <Text fw={900} w={34} ta="right">
+                    {count}
+                  </Text>
+                </Group>
           ))}
-        </div>
+            </Stack>
+          </Paper>
       ) : (
-        <div className="hidden-results">
-          <EyeOff size={24} aria-hidden="true" />
-          {t("voting.hiddenResults")}
-        </div>
+          <Paper withBorder bg="gray.0" p="xl">
+            <Center mih={130}>
+              <Stack align="center" gap="xs">
+                <EyeOff size={24} aria-hidden="true" />
+                <Text c="dimmed" fw={800} ta="center">
+                  {t("voting.hiddenResults")}
+                </Text>
+              </Stack>
+            </Center>
+          </Paper>
       )}
 
       {isHost ? (
-        <div className="host-controls">
-          <button
-            className={`primary-action ${pendingSync.revealVotes ? "is-syncing" : ""}`}
+          <Group align="stretch" gap="sm">
+            <Button
             type="button"
             onClick={onRevealVotes}
             disabled={pendingSync.revealVotes || !activeVotes.length || (room.revealed && !pendingSync.revealVotes)}
+              loading={pendingSync.revealVotes}
+              leftSection={<Eye size={18} aria-hidden="true" />}
           >
-            {pendingSync.revealVotes ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
             {t("action.reveal")}
-          </button>
-          <button
-            className={`secondary-action ${pendingSync.resetVoting ? "is-syncing" : ""}`}
+            </Button>
+            <Button
+              variant="light"
             type="button"
             onClick={onResetVoting}
             disabled={pendingSync.resetVoting}
+              loading={pendingSync.resetVoting}
+              leftSection={<RefreshCcw size={18} aria-hidden="true" />}
           >
-            {pendingSync.resetVoting ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <RefreshCcw size={18} aria-hidden="true" />}
             {t("action.reset")}
-          </button>
-          <div className="select-sync">
-            <select
+            </Button>
+            <Select
               value={activeIssue?.estimate ?? ""}
-              onChange={(event) => onSetEstimate(event.target.value)}
+              onChange={(value) => onSetEstimate(value ?? "")}
               disabled={!activeIssue}
               aria-label={t("aria.finalEstimate")}
-            >
-              <option value="">{t("common.estimate")}</option>
-              {room.card_set.map((card) => (
-                <option key={card} value={card}>
-                  {card}
-                </option>
-              ))}
-            </select>
-            {pendingSync.estimate ? <Loader2 className="spin select-spinner" size={16} aria-hidden="true" /> : null}
-          </div>
-        </div>
+              placeholder={t("common.estimate")}
+              data={room.card_set.map((card) => ({ value: card, label: card }))}
+              rightSection={pendingSync.estimate ? <Loader size="xs" aria-hidden="true" /> : undefined}
+              w={{ base: "100%", sm: 180 }}
+            />
+          </Group>
       ) : null}
-    </section>
+      </Stack>
+    </Paper>
   );
 }
