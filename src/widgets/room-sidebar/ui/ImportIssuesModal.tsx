@@ -40,11 +40,12 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
   const { t } = useI18n();
   const [csvData, setCsvData] = useState<CsvData | null>(null);
   const [mapping, setMapping] = useState<JiraImportMapping>(emptyMapping);
+  const [linkPattern, setLinkPattern] = useState("");
   const [fileName, setFileName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const fileInputId = useId();
 
-  const mappedIssues = useMemo(() => (csvData ? mapJiraCsvRows(csvData, mapping) : []), [csvData, mapping]);
+  const mappedIssues = useMemo(() => (csvData ? mapJiraCsvRows(csvData, mapping, linkPattern) : []), [csvData, mapping, linkPattern]);
   const previewRows = mappedIssues.slice(0, 3);
 
   useEffect(() => {
@@ -65,6 +66,7 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
   function reset() {
     setCsvData(null);
     setMapping(emptyMapping);
+    setLinkPattern("");
     setFileName("");
     setError(null);
   }
@@ -96,6 +98,7 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
     } catch (parseError) {
       setCsvData(null);
       setMapping(emptyMapping);
+      setLinkPattern("");
       setFileName("");
       setError(translateError(parseError, t, t("error.readCsv")));
     }
@@ -184,17 +187,30 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
                     ))}
                   </select>
                 </label>
-                <label>
-                  {t("common.link")}
-                  <select value={mapping.link ?? ""} onChange={(event) => updateMapping("link", event.target.value)}>
-                    <option value="">{t("action.skip")}</option>
-                    {csvData.headers.map((header, index) => (
-                      <option key={`${index}-${header}`} value={index}>
-                        {formatOptionLabel(header, index, t("import.unnamedColumn"))}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div className="link-mapping-group">
+                  <label>
+                    {t("common.link")}
+                    <select value={mapping.link ?? ""} onChange={(event) => updateMapping("link", event.target.value)}>
+                      <option value="">{t("action.skip")}</option>
+                      {csvData.headers.map((header, index) => (
+                        <option key={`${index}-${header}`} value={index}>
+                          {formatOptionLabel(header, index, t("import.unnamedColumn"))}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    {t("field.linkPattern")}
+                    <input
+                      value={linkPattern}
+                      onChange={(event) => setLinkPattern(event.target.value)}
+                      placeholder={t("placeholder.linkPattern")}
+                      inputMode="url"
+                      disabled={mapping.link === null}
+                    />
+                  </label>
+                  <span className="field-hint">{t("hint.linkPattern")}</span>
+                </div>
                 <label>
                   {t("common.estimate")}
                   <select value={mapping.estimate ?? ""} onChange={(event) => updateMapping("estimate", event.target.value)}>

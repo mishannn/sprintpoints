@@ -50,6 +50,21 @@ function truncateTitle(value: string) {
   return value.trim().slice(0, 240);
 }
 
+function applyLinkPattern(value: string, pattern: string) {
+  const trimmedValue = value.trim();
+  const trimmedPattern = pattern.trim();
+
+  if (!trimmedValue || !trimmedPattern) {
+    return trimmedValue;
+  }
+
+  if (/\{VALUE\}/i.test(trimmedPattern)) {
+    return trimmedPattern.replace(/\{VALUE\}/gi, trimmedValue);
+  }
+
+  return `${trimmedPattern}${trimmedValue}`;
+}
+
 export function getInitialJiraImportMapping(headers: string[]): JiraImportMapping {
   const title = findHeaderIndex(headers, titleCandidates);
   const description = findHeaderIndex(headers, descriptionCandidates);
@@ -111,7 +126,7 @@ export function parseCsv(text: string): CsvData {
   return { headers, rows };
 }
 
-export function mapJiraCsvRows(data: CsvData, mapping: JiraImportMapping): ImportedIssueInput[] {
+export function mapJiraCsvRows(data: CsvData, mapping: JiraImportMapping, linkPattern = ""): ImportedIssueInput[] {
   if (mapping.title === null) {
     return [];
   }
@@ -120,7 +135,7 @@ export function mapJiraCsvRows(data: CsvData, mapping: JiraImportMapping): Impor
     .map((row) => ({
       title: truncateTitle(readCell(row, mapping.title)),
       description: readCell(row, mapping.description),
-      link: readCell(row, mapping.link),
+      link: applyLinkPattern(readCell(row, mapping.link), linkPattern),
       estimate: readCell(row, mapping.estimate),
     }))
     .filter((issue) => issue.title);

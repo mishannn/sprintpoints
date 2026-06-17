@@ -277,6 +277,13 @@ textarea {
   resize: vertical;
 }
 
+.field-hint {
+  color: #647381;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
 .checkbox-line {
   display: flex;
   grid-template-columns: none;
@@ -938,6 +945,30 @@ textarea {
   gap: 0 14px;
 }
 
+.mapping-grid input,
+.mapping-grid select {
+  min-height: 40px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.mapping-grid input::placeholder {
+  color: #82909b;
+  font-weight: 600;
+}
+
+.link-mapping-group {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 14px;
+}
+
+.link-mapping-group .field-hint {
+  grid-column: 2;
+  margin-top: 4px;
+}
+
 .import-preview {
   display: grid;
   gap: 8px;
@@ -1097,6 +1128,15 @@ textarea {
 
   .status-grid {
     grid-template-columns: 1fr;
+  }
+
+  .mapping-grid,
+  .link-mapping-group {
+    grid-template-columns: 1fr;
+  }
+
+  .link-mapping-group .field-hint {
+    grid-column: 1;
   }
 
   .mapping-grid {
