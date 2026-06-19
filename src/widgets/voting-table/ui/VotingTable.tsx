@@ -1,4 +1,4 @@
-import { Anchor, Badge, Box, Button, Center, Group, Loader, Paper, Progress, Select, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import { Anchor, Badge, Box, Button, Center, Group, Loader, Paper, Progress, ScrollArea, Select, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import { Coffee, ExternalLink, Eye, EyeOff, RefreshCcw } from "lucide-react";
 import type { Issue, Participant, Room, Vote } from "../../../entities/room/model/types";
 import { normalizeEstimate } from "../../../features/manage-issues/model/estimate";
@@ -157,35 +157,37 @@ export function VotingTable({
                 <Badge variant="default">{matchingEstimateIssues.length}</Badge>
               </Group>
               {matchingEstimateIssues.length ? (
-                <Stack gap="xs">
-                  {matchingEstimateIssues.map((issue) => {
-                    const link = issue.link ?? "";
-                    const href = link.trim() ? getExternalHref(link.trim()) : null;
+                <ScrollArea.Autosize mah={260} type="auto" offsetScrollbars>
+                  <Stack gap="xs" pr={4}>
+                    {matchingEstimateIssues.map((issue) => {
+                      const link = issue.link ?? "";
+                      const href = link.trim() ? getExternalHref(link.trim()) : null;
 
-                    return (
-                      <Paper key={issue.id} withBorder bg="white" p="sm">
-                        <Group justify="space-between" align="flex-start" gap="sm" wrap="nowrap">
-                          <Box miw={0}>
-                            {issue.archived_at ? <Badge variant="light" mb={4}>{t("common.archived")}</Badge> : null}
-                            <Text fw={650} lineClamp={2}>
-                              {issue.title}
-                            </Text>
-                            {href ? (
-                              <Anchor href={href} target="_blank" rel="noreferrer" fz="xs" c="dimmed">
-                                <Group gap={5} wrap="nowrap">
-                                  <Text span truncate>
-                                    {link}
-                                  </Text>
-                                  <ExternalLink size={13} aria-hidden="true" />
-                                </Group>
-                              </Anchor>
-                            ) : null}
-                          </Box>
-                        </Group>
-                      </Paper>
-                    );
-                  })}
-                </Stack>
+                      return (
+                        <Paper key={issue.id} withBorder bg="white" p="sm">
+                          <Group justify="space-between" align="flex-start" gap="sm" wrap="nowrap">
+                            <Box miw={0}>
+                              {issue.archived_at ? <Badge variant="light" mb={4}>{t("common.archived")}</Badge> : null}
+                              <Text fw={650} lineClamp={2}>
+                                {issue.title}
+                              </Text>
+                              {href ? (
+                                <Anchor href={href} target="_blank" rel="noreferrer" fz="xs" c="dimmed">
+                                  <Group gap={5} wrap="nowrap">
+                                    <Text span truncate>
+                                      {link}
+                                    </Text>
+                                    <ExternalLink size={13} aria-hidden="true" />
+                                  </Group>
+                                </Anchor>
+                              ) : null}
+                            </Box>
+                          </Group>
+                        </Paper>
+                      );
+                    })}
+                  </Stack>
+                </ScrollArea.Autosize>
               ) : (
                 <Text c="dimmed" fw={700}>
                   {t("state.noMatchingEstimate")}
