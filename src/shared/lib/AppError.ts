@@ -7,6 +7,7 @@ export type AppErrorCode =
   | "addFacilitator"
   | "addStory"
   | "archiveStory"
+  | "archiveEstimatedStories"
   | "createFirstStory"
   | "createRoomApi"
   | "csvHeaderEmpty"

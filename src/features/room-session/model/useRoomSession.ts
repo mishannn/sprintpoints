@@ -4,6 +4,7 @@ import { joinPlanningRoom } from "../../join-room/model/joinRoom";
 import { deleteParticipant as deleteParticipantRequest } from "../../manage-participants/model/participants";
 import {
   archiveIssue as archiveIssueRequest,
+  archiveEstimatedIssues as archiveEstimatedIssuesRequest,
   createIssue,
   activateIssue as activateIssueRequest,
   deleteIssue as deleteIssueRequest,
@@ -29,6 +30,7 @@ export type PendingSync = {
   resetVoting: boolean;
   activeIssueId: string | null;
   addIssue: boolean;
+  archiveEstimatedIssues: boolean;
   archiveIssueId: string | null;
   editIssueId: string | null;
   deleteIssueId: string | null;
@@ -44,6 +46,7 @@ const idlePendingSync: PendingSync = {
   resetVoting: false,
   activeIssueId: null,
   addIssue: false,
+  archiveEstimatedIssues: false,
   archiveIssueId: null,
   editIssueId: null,
   deleteIssueId: null,
@@ -533,6 +536,58 @@ export function useRoomSession() {
     }
   }, [isHost, loadRoom, setPending, showError, state, t]);
 
+  const archiveEstimatedIssues = useCallback(async () => {
+    if (!state || !isHost) {
+      return;
+    }
+
+    const archivedAt = new Date().toISOString();
+    const previousState = state;
+    const estimatedActiveIssues = activeIssues.filter((issue) => issue.estimate);
+
+    if (estimatedActiveIssues.length === 0) {
+      return;
+    }
+
+    const estimatedIssueIds = new Set(estimatedActiveIssues.map((issue) => issue.id));
+    const isArchivingActiveIssue = state.room.active_issue_id ? estimatedIssueIds.has(state.room.active_issue_id) : false;
+    const activeIssueIndex = activeIssues.findIndex((issue) => issue.id === state.room.active_issue_id);
+    const remainingActiveIssues = activeIssues.filter((issue) => !estimatedIssueIds.has(issue.id));
+    const nextActiveIssue =
+      isArchivingActiveIssue && activeIssueIndex >= 0
+        ? remainingActiveIssues.find((issue) => issue.position > activeIssues[activeIssueIndex].position) ??
+          [...remainingActiveIssues].reverse().find((issue) => issue.position < activeIssues[activeIssueIndex].position) ??
+          null
+        : null;
+    const nextActiveIssueId = isArchivingActiveIssue ? nextActiveIssue?.id ?? null : state.room.active_issue_id;
+
+    setNotice(null);
+    setPending({ archiveEstimatedIssues: true });
+    setState((current) =>
+      current
+        ? {
+            ...current,
+            room: isArchivingActiveIssue
+              ? { ...current.room, active_issue_id: nextActiveIssueId, revealed: false }
+              : current.room,
+            issues: current.issues.map((issue) =>
+              estimatedIssueIds.has(issue.id) ? { ...issue, archived_at: archivedAt } : issue,
+            ),
+          }
+        : current,
+    );
+
+    try {
+      await archiveEstimatedIssuesRequest(state.room.id, isArchivingActiveIssue ? nextActiveIssueId : undefined);
+      await loadRoom(state.room.code);
+    } catch (error) {
+      setState(previousState);
+      showError(error, t("error.archiveEstimatedStories"));
+    } finally {
+      setPending({ archiveEstimatedIssues: false });
+    }
+  }, [activeIssues, isHost, loadRoom, setPending, showError, state, t]);
+
   const unarchiveIssue = useCallback(async (issue: Issue) => {
     if (!state || !isHost) {
       return;
@@ -709,6 +764,7 @@ export function useRoomSession() {
     editIssue,
     deleteIssue,
     deleteParticipant,
+    archiveEstimatedIssues,
     archiveIssue,
     unarchiveIssue,
     importIssues,

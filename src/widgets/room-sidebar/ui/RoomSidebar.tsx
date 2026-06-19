@@ -21,6 +21,7 @@ type RoomSidebarProps = {
   roomName: string;
   onActivateIssue: (issue: Issue) => void;
   onAddIssue: (details: IssueDetailsInput) => Promise<boolean>;
+  onArchiveEstimatedIssues: () => Promise<void>;
   onArchiveIssue: (issue: Issue) => Promise<void>;
   onDeleteIssue: (issue: Issue) => Promise<void>;
   onDeleteParticipant: (participant: Participant) => Promise<void>;
@@ -45,6 +46,7 @@ export function RoomSidebar({
   roomName,
   onActivateIssue,
   onAddIssue,
+  onArchiveEstimatedIssues,
   onArchiveIssue,
   onDeleteIssue,
   onDeleteParticipant,
@@ -57,6 +59,7 @@ export function RoomSidebar({
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [isImportIssuesOpen, setIsImportIssuesOpen] = useState(false);
   const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
+  const estimatedIssuesCount = issues.filter((issue) => issue.estimate).length;
 
   const closeModal = () => {
     setIsAddIssueOpen(false);
@@ -89,6 +92,14 @@ export function RoomSidebar({
 
   const handleArchiveIssue = (issue: Issue) => {
     void onArchiveIssue(issue);
+  };
+
+  const handleArchiveEstimatedIssues = () => {
+    if (!window.confirm(t("confirm.archiveEstimatedStories"))) {
+      return;
+    }
+
+    void onArchiveEstimatedIssues();
   };
 
   const handleUnarchiveIssue = (issue: Issue) => {
@@ -275,9 +286,20 @@ export function RoomSidebar({
             </Stack>
           </ScrollArea.Autosize>
         {isHost ? (
-            <Button variant="light" type="button" onClick={() => setIsAddIssueOpen(true)} leftSection={pendingSync.addIssue ? <Loader size="xs" /> : <Plus size={18} aria-hidden="true" />}>
-            {t("action.addStory")}
-            </Button>
+            <Group grow>
+              <Button
+                variant="default"
+                type="button"
+                onClick={handleArchiveEstimatedIssues}
+                disabled={estimatedIssuesCount === 0 || pendingSync.archiveEstimatedIssues}
+                leftSection={pendingSync.archiveEstimatedIssues ? <Loader size="xs" /> : <Archive size={18} aria-hidden="true" />}
+              >
+                {t("action.archiveEstimatedStories")}
+              </Button>
+              <Button variant="light" type="button" onClick={() => setIsAddIssueOpen(true)} leftSection={pendingSync.addIssue ? <Loader size="xs" /> : <Plus size={18} aria-hidden="true" />}>
+              {t("action.addStory")}
+              </Button>
+            </Group>
         ) : null}
         </Stack>
       </Paper>

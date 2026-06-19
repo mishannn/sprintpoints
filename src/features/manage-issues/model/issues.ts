@@ -165,6 +165,37 @@ export async function archiveIssue(roomId: string, issueId: string, nextActiveIs
   return issue;
 }
 
+export async function archiveEstimatedIssues(roomId: string, nextActiveIssueId?: string | null) {
+  if (!supabase) {
+    throw new AppError("supabaseMissing");
+  }
+
+  const { data: issues, error } = await supabase
+    .from("issues")
+    .update({ archived_at: new Date().toISOString() })
+    .eq("room_id", roomId)
+    .is("archived_at", null)
+    .not("estimate", "is", null)
+    .neq("estimate", "")
+    .select("*");
+
+  if (error || !issues) {
+    throw new AppError("archiveEstimatedStories", { cause: error });
+  }
+
+  if (nextActiveIssueId === undefined) {
+    return issues;
+  }
+
+  const { error: roomError } = await supabase.from("rooms").update({ active_issue_id: nextActiveIssueId, revealed: false }).eq("id", roomId);
+
+  if (roomError) {
+    throw new AppError("activateStoryAfterArchive", { cause: roomError });
+  }
+
+  return issues;
+}
+
 export async function unarchiveIssue(roomId: string, issueId: string) {
   if (!supabase) {
     throw new AppError("supabaseMissing");

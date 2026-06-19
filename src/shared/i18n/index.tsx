@@ -22,6 +22,7 @@ export const languages: Array<{ code: Language; label: string }> = [
 const translations: Record<Language, Record<string, TranslationValue>> = {
   en: {
     "action.addStory": "Add story",
+    "action.archiveEstimatedStories": "Archive estimated",
     "action.archiveStory": "Archive story",
     "action.cancel": "Cancel",
     "action.chooseColumn": "Choose column",
@@ -69,6 +70,7 @@ const translations: Record<Language, Record<string, TranslationValue>> = {
     "common.title": "Title",
     "common.votes": "Votes",
     "confirm.deleteStory": "Delete this story?",
+    "confirm.archiveEstimatedStories": "Archive all estimated stories?",
     "confirm.deleteParticipant": ({ name }) => `Delete ${name} from the room?`,
     "error.activateImportedStory": "Could not activate the imported story.",
     "error.activateNewStory": "Could not activate the new story.",
@@ -77,6 +79,7 @@ const translations: Record<Language, Record<string, TranslationValue>> = {
     "error.addFacilitator": "Could not add the facilitator.",
     "error.addStory": "Could not add the story.",
     "error.archiveStory": "Could not archive the story.",
+    "error.archiveEstimatedStories": "Could not archive estimated stories.",
     "error.chooseTitleColumn": "Choose a column for Title.",
     "error.createFirstStory": "Could not create the first story.",
     "error.createRoom": "Could not create the room.",
@@ -157,6 +160,7 @@ const translations: Record<Language, Record<string, TranslationValue>> = {
   },
   ru: {
     "action.addStory": "Добавить",
+    "action.archiveEstimatedStories": "Архивировать оцененные",
     "action.archiveStory": "Архивировать задачу",
     "action.cancel": "Отмена",
     "action.chooseColumn": "Выберите колонку",
@@ -204,6 +208,7 @@ const translations: Record<Language, Record<string, TranslationValue>> = {
     "common.title": "Название",
     "common.votes": "Голоса",
     "confirm.deleteStory": "Удалить эту задачу?",
+    "confirm.archiveEstimatedStories": "Архивировать все оцененные задачи?",
     "confirm.deleteParticipant": ({ name }) => `Удалить ${name} из комнаты?`,
     "error.activateImportedStory": "Не удалось активировать импортированную задачу.",
     "error.activateNewStory": "Не удалось активировать новую задачу.",
@@ -212,6 +217,7 @@ const translations: Record<Language, Record<string, TranslationValue>> = {
     "error.addFacilitator": "Не удалось добавить фасилитатора.",
     "error.addStory": "Не удалось добавить задачу.",
     "error.archiveStory": "Не удалось архивировать задачу.",
+    "error.archiveEstimatedStories": "Не удалось архивировать оцененные задачи.",
     "error.chooseTitleColumn": "Выберите колонку для названия.",
     "error.createFirstStory": "Не удалось создать первую задачу.",
     "error.createRoom": "Не удалось создать комнату.",
