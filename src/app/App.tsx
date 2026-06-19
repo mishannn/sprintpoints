@@ -61,6 +61,7 @@ function AppContent() {
       onRefreshRoom={session.refreshRoom}
       onResetVoting={session.resetVoting}
       onRevealVotes={session.revealVotes}
+      onSwitchObserverMode={session.switchObserverMode}
       onSetEstimate={session.setEstimate}
     />
   );

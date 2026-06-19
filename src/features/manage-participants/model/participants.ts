@@ -16,3 +16,19 @@ export async function deleteParticipant(roomId: string, participantId: string, h
     throw new AppError("deleteParticipant", { cause: error });
   }
 }
+
+export async function updateParticipantSpectatorMode(participantId: string, token: string, isSpectator: boolean) {
+  if (!supabase) {
+    throw new AppError("supabaseMissing");
+  }
+
+  const { error } = await supabase
+    .from("participants")
+    .update({ is_spectator: isSpectator })
+    .eq("id", participantId)
+    .eq("token", token);
+
+  if (error) {
+    throw new AppError("updateParticipantMode", { cause: error });
+  }
+}

@@ -25,6 +25,7 @@ export type AppErrorCode =
   | "storyTitleRequired"
   | "supabaseMissing"
   | "unarchiveStory"
+  | "updateParticipantMode"
   | "updateStory";
 
 type AppErrorOptions = {

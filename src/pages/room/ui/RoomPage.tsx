@@ -1,5 +1,5 @@
 import { ActionIcon, Alert, Box, Button, Container, Grid, Group, Loader, Stack, Text, Title, Tooltip } from "@mantine/core";
-import { Check, Clipboard, RefreshCcw } from "lucide-react";
+import { Check, Clipboard, Eye, EyeOff, RefreshCcw } from "lucide-react";
 import type { Issue, Notice, Participant, RoomState, Vote } from "../../../entities/room/model/types";
 import type { IssueDetailsInput, IssueImportInput } from "../../../features/manage-issues/model/issues";
 import type { PendingSync } from "../../../features/room-session/model/useRoomSession";
@@ -43,6 +43,7 @@ type RoomPageProps = {
   onRefreshRoom: () => void;
   onResetVoting: () => void;
   onRevealVotes: () => void;
+  onSwitchObserverMode: () => Promise<void>;
   onSetEstimate: (value: string) => void;
 };
 
@@ -73,6 +74,7 @@ export function RoomPage({
   onRefreshRoom,
   onResetVoting,
   onRevealVotes,
+  onSwitchObserverMode,
   onSetEstimate,
 }: RoomPageProps) {
   const { t } = useI18n();
@@ -97,6 +99,23 @@ export function RoomPage({
           </Stack>
           <Group gap="xs">
             <LanguageSelector />
+            <Button
+              variant="default"
+              type="button"
+              onClick={() => void onSwitchObserverMode()}
+              disabled={pendingSync.observerMode}
+              leftSection={
+                pendingSync.observerMode ? (
+                  <Loader size="xs" />
+                ) : currentParticipant.is_spectator ? (
+                  <EyeOff size={17} aria-hidden="true" />
+                ) : (
+                  <Eye size={17} aria-hidden="true" />
+                )
+              }
+            >
+              {currentParticipant.is_spectator ? t("action.becomeVoter") : t("action.becomeObserver")}
+            </Button>
             <Tooltip label={t("action.copyInviteLink")}>
               <ActionIcon variant="default" size={36} type="button" onClick={handleCopyInviteLink} aria-label={t("action.copyInviteLink")}>
                 {copied ? <Check size={19} aria-hidden="true" /> : <Clipboard size={19} aria-hidden="true" />}

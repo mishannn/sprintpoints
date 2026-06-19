@@ -47,3 +47,15 @@ export async function resetIssueVoting(roomId: string, issueId: string) {
     throw new AppError("resetVoting", { cause: voteError ?? roomError });
   }
 }
+
+export async function deleteParticipantIssueVote(issueId: string, participantId: string) {
+  if (!supabase) {
+    throw new AppError("supabaseMissing");
+  }
+
+  const { error } = await supabase.from("votes").delete().eq("issue_id", issueId).eq("participant_id", participantId);
+
+  if (error) {
+    throw new AppError("saveVote", { cause: error });
+  }
+}

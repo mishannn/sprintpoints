@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPlanningRoom } from "../../create-room/model/createRoom";
 import { joinPlanningRoom } from "../../join-room/model/joinRoom";
-import { deleteParticipant as deleteParticipantRequest } from "../../manage-participants/model/participants";
+import {
+  deleteParticipant as deleteParticipantRequest,
+  updateParticipantSpectatorMode,
+} from "../../manage-participants/model/participants";
 import {
   archiveIssue as archiveIssueRequest,
   archiveEstimatedIssues as archiveEstimatedIssuesRequest,
@@ -15,7 +18,7 @@ import {
   type IssueDetailsInput,
   type IssueImportInput,
 } from "../../manage-issues/model/issues";
-import { resetIssueVoting, revealRoomVotes, submitVote } from "../../vote/model/voting";
+import { deleteParticipantIssueVote, resetIssueVoting, revealRoomVotes, submitVote } from "../../vote/model/voting";
 import { loadRoomState } from "../../../entities/room/model/roomApi";
 import type { Issue, Notice, Participant, RoomState } from "../../../entities/room/model/types";
 import { distribution, voteSummary } from "../../../entities/room/model/voteStats";
@@ -35,6 +38,7 @@ export type PendingSync = {
   editIssueId: string | null;
   deleteIssueId: string | null;
   deleteParticipantId: string | null;
+  observerMode: boolean;
   estimate: boolean;
   refreshRoom: boolean;
   unarchiveIssueId: string | null;
@@ -51,6 +55,7 @@ const idlePendingSync: PendingSync = {
   editIssueId: null,
   deleteIssueId: null,
   deleteParticipantId: null,
+  observerMode: false,
   estimate: false,
   refreshRoom: false,
   unarchiveIssueId: null,
@@ -75,12 +80,13 @@ export function useRoomSession() {
     () => activeIssues.find((issue) => issue.id === state?.room.active_issue_id) ?? activeIssues[0] ?? null,
     [activeIssues, state?.room.active_issue_id],
   );
+  const voters = state?.participants.filter((participant) => !participant.is_spectator) ?? [];
+  const voterIds = useMemo(() => new Set(voters.map((participant) => participant.id)), [voters]);
   const activeVotes = useMemo(
-    () => state?.votes.filter((vote) => vote.issue_id === activeIssue?.id) ?? [],
-    [activeIssue?.id, state?.votes],
+    () => state?.votes.filter((vote) => vote.issue_id === activeIssue?.id && voterIds.has(vote.participant_id)) ?? [],
+    [activeIssue?.id, state?.votes, voterIds],
   );
   const currentVote = activeVotes.find((vote) => vote.participant_id === currentParticipant?.id) ?? null;
-  const voters = state?.participants.filter((participant) => !participant.is_spectator) ?? [];
   const summary = state?.room.revealed ? voteSummary(activeVotes) : null;
   const voteGroups = state?.room.revealed ? distribution(activeVotes) : {};
 
@@ -498,6 +504,50 @@ export function useRoomSession() {
     }
   }, [currentParticipant?.id, hostToken, isHost, loadRoom, setPending, showError, state, t]);
 
+  const switchObserverMode = useCallback(async () => {
+    if (!state || !currentParticipant) {
+      return;
+    }
+
+    const nextIsSpectator = !currentParticipant.is_spectator;
+    const previousState = state;
+    const previousParticipant = currentParticipant;
+
+    setNotice(null);
+    setPending({ observerMode: true });
+    setCurrentParticipant((participant) => (participant ? { ...participant, is_spectator: nextIsSpectator } : participant));
+    setState((current) =>
+      current
+        ? {
+            ...current,
+            participants: current.participants.map((participant) =>
+              participant.id === currentParticipant.id ? { ...participant, is_spectator: nextIsSpectator } : participant,
+            ),
+            votes: nextIsSpectator && activeIssue
+              ? current.votes.filter(
+                  (vote) => !(vote.issue_id === activeIssue.id && vote.participant_id === currentParticipant.id),
+                )
+              : current.votes,
+          }
+        : current,
+    );
+
+    try {
+      await Promise.all([
+        updateParticipantSpectatorMode(currentParticipant.id, currentParticipant.token, nextIsSpectator),
+        nextIsSpectator && activeIssue ? deleteParticipantIssueVote(activeIssue.id, currentParticipant.id) : Promise.resolve(),
+      ]);
+      await loadRoom(state.room.code);
+      setNotice({ kind: "success", message: nextIsSpectator ? t("notice.observerMode") : t("notice.voterMode") });
+    } catch (error) {
+      setCurrentParticipant(previousParticipant);
+      setState(previousState);
+      showError(error, t("error.updateParticipantMode"));
+    } finally {
+      setPending({ observerMode: false });
+    }
+  }, [activeIssue, currentParticipant, loadRoom, setPending, showError, state, t]);
+
   const archiveIssue = useCallback(async (issue: Issue) => {
     if (!state || !isHost) {
       return;
@@ -764,6 +814,7 @@ export function useRoomSession() {
     editIssue,
     deleteIssue,
     deleteParticipant,
+    switchObserverMode,
     archiveEstimatedIssues,
     archiveIssue,
     unarchiveIssue,

@@ -123,7 +123,7 @@ export function VotingTable({
               h={112}
               pos="relative"
             onClick={() => onCastVote(card)}
-            disabled={!activeIssue || currentParticipant.is_spectator || room.revealed}
+            disabled={!activeIssue || currentParticipant.is_spectator || pendingSync.observerMode || room.revealed}
               fullWidth
             aria-label={card}
           >
