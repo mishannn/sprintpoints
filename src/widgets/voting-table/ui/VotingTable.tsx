@@ -157,7 +157,7 @@ export function VotingTable({
                 <Badge variant="default">{matchingEstimateIssues.length}</Badge>
               </Group>
               {matchingEstimateIssues.length ? (
-                <ScrollArea.Autosize mah={260} type="auto" offsetScrollbars>
+                <ScrollArea.Autosize mah={360} type="auto" offsetScrollbars>
                   <Stack gap="xs" pr={4}>
                     {matchingEstimateIssues.map((issue) => {
                       const link = issue.link ?? "";
