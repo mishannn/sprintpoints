@@ -1,6 +1,7 @@
 import { Anchor, Badge, Box, Button, Center, Group, Loader, Paper, Progress, Select, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import { Coffee, ExternalLink, Eye, EyeOff, RefreshCcw } from "lucide-react";
 import type { Issue, Participant, Room, Vote } from "../../../entities/room/model/types";
+import { normalizeEstimate } from "../../../features/manage-issues/model/estimate";
 import type { PendingSync } from "../../../features/room-session/model/useRoomSession";
 import { useI18n } from "../../../shared/i18n";
 
@@ -57,7 +58,12 @@ export function VotingTable({
   const activeStoryLink = activeLink.trim() ? getExternalHref(activeLink.trim()) : null;
   const selectedRating = currentVote?.value ?? null;
   const matchingEstimateIssues = selectedRating
-    ? issues.filter((issue) => issue.id !== activeIssue?.id && issue.estimate === selectedRating)
+    ? issues.filter(
+        (issue) =>
+          issue.id !== activeIssue?.id &&
+          issue.estimate !== null &&
+          normalizeEstimate(issue.estimate) === normalizeEstimate(selectedRating),
+      )
     : [];
   const votesByParticipantId = new Map(activeVotes.map((vote) => [vote.participant_id, vote]));
   const voterRows = participants

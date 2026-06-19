@@ -1,6 +1,7 @@
 import { supabase } from "../../../shared/api/supabase";
 import type { Issue } from "../../../entities/room/model/types";
 import { AppError } from "../../../shared/lib/AppError";
+import { normalizeEstimate } from "./estimate";
 
 export type IssueDetailsInput = {
   title: string;
@@ -56,7 +57,7 @@ export async function importIssues(roomId: string, details: IssueImportInput[], 
       title: issue.title.trim(),
       description: issue.description.trim(),
       link: issue.link.trim(),
-      estimate: issue.estimate.trim() || null,
+      estimate: normalizeEstimate(issue.estimate) || null,
       position: startPosition + index,
     }))
     .filter((issue) => issue.title);

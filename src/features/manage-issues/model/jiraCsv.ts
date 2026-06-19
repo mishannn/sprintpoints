@@ -1,5 +1,6 @@
 import type { Issue } from "../../../entities/room/model/types";
 import type { IssueDetailsInput } from "./issues";
+import { normalizeEstimate } from "./estimate";
 
 export type CsvData = {
   headers: string[];
@@ -136,7 +137,7 @@ export function mapJiraCsvRows(data: CsvData, mapping: JiraImportMapping, linkPa
       title: truncateTitle(readCell(row, mapping.title)),
       description: readCell(row, mapping.description),
       link: applyLinkPattern(readCell(row, mapping.link), linkPattern),
-      estimate: readCell(row, mapping.estimate),
+      estimate: normalizeEstimate(readCell(row, mapping.estimate)),
     }))
     .filter((issue) => issue.title);
 }
