@@ -13,6 +13,7 @@ type RoomSidebarProps = {
   activeIssue: Issue | null;
   activeVotes: Vote[];
   archivedIssues: Issue[];
+  currentParticipant: Participant;
   isHost: boolean;
   issues: Issue[];
   pendingSync: PendingSync;
@@ -22,6 +23,7 @@ type RoomSidebarProps = {
   onAddIssue: (details: IssueDetailsInput) => Promise<boolean>;
   onArchiveIssue: (issue: Issue) => Promise<void>;
   onDeleteIssue: (issue: Issue) => Promise<void>;
+  onDeleteParticipant: (participant: Participant) => Promise<void>;
   onEditIssue: (issue: Issue, details: IssueDetailsInput) => Promise<boolean>;
   onImportIssues: (details: IssueImportInput[]) => Promise<boolean>;
   onUnarchiveIssue: (issue: Issue) => Promise<void>;
@@ -35,6 +37,7 @@ export function RoomSidebar({
   activeIssue,
   activeVotes,
   archivedIssues,
+  currentParticipant,
   isHost,
   issues,
   pendingSync,
@@ -44,6 +47,7 @@ export function RoomSidebar({
   onAddIssue,
   onArchiveIssue,
   onDeleteIssue,
+  onDeleteParticipant,
   onEditIssue,
   onImportIssues,
   onUnarchiveIssue,
@@ -73,6 +77,14 @@ export function RoomSidebar({
     }
 
     void onDeleteIssue(issue);
+  };
+
+  const handleDeleteParticipant = (participant: Participant) => {
+    if (!window.confirm(t("confirm.deleteParticipant", { name: participant.name }))) {
+      return;
+    }
+
+    void onDeleteParticipant(participant);
   };
 
   const handleArchiveIssue = (issue: Issue) => {
@@ -106,6 +118,7 @@ export function RoomSidebar({
                     {participant.is_spectator ? t("participant.spectator") : voted ? t("participant.voted") : t("participant.waiting")}
                     </Text>
                   </Box>
+                  <Group gap={5} wrap="nowrap">
                 {!participant.is_spectator ? (
                     <Box
                       aria-label={voted ? t("participant.voted") : t("aria.notVoted")}
@@ -115,6 +128,26 @@ export function RoomSidebar({
                       style={{ borderRadius: "50%", flex: "0 0 auto" }}
                     />
                 ) : null}
+                    {isHost && participant.id !== currentParticipant.id ? (
+                      <Tooltip label={t("action.deleteParticipant")}>
+                        <ActionIcon
+                          variant="subtle"
+                          color="red"
+                          type="button"
+                          size="sm"
+                          onClick={() => handleDeleteParticipant(participant)}
+                          aria-label={t("action.deleteParticipant")}
+                          disabled={pendingSync.deleteParticipantId === participant.id}
+                        >
+                          {pendingSync.deleteParticipantId === participant.id ? (
+                            <Loader size="xs" aria-hidden="true" />
+                          ) : (
+                            <Trash2 size={14} aria-hidden="true" />
+                          )}
+                        </ActionIcon>
+                      </Tooltip>
+                    ) : null}
+                  </Group>
                 </Group>
               </Paper>
             );

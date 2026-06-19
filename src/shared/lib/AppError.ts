@@ -10,6 +10,7 @@ export type AppErrorCode =
   | "createFirstStory"
   | "createRoomApi"
   | "csvHeaderEmpty"
+  | "deleteParticipant"
   | "deleteStory"
   | "importStories"
   | "joinRoom"

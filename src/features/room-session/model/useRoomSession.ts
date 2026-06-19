@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPlanningRoom } from "../../create-room/model/createRoom";
 import { joinPlanningRoom } from "../../join-room/model/joinRoom";
+import { deleteParticipant as deleteParticipantRequest } from "../../manage-participants/model/participants";
 import {
   archiveIssue as archiveIssueRequest,
   createIssue,
@@ -31,6 +32,7 @@ export type PendingSync = {
   archiveIssueId: string | null;
   editIssueId: string | null;
   deleteIssueId: string | null;
+  deleteParticipantId: string | null;
   estimate: boolean;
   refreshRoom: boolean;
   unarchiveIssueId: string | null;
@@ -45,6 +47,7 @@ const idlePendingSync: PendingSync = {
   archiveIssueId: null,
   editIssueId: null,
   deleteIssueId: null,
+  deleteParticipantId: null,
   estimate: false,
   refreshRoom: false,
   unarchiveIssueId: null,
@@ -462,6 +465,36 @@ export function useRoomSession() {
     }
   }, [isHost, loadRoom, setPending, showError, state, t]);
 
+  const deleteParticipant = useCallback(async (participant: Participant) => {
+    if (!state || !isHost || !hostToken || participant.id === currentParticipant?.id) {
+      return;
+    }
+
+    const previousState = state;
+
+    setNotice(null);
+    setPending({ deleteParticipantId: participant.id });
+    setState((current) =>
+      current
+        ? {
+            ...current,
+            participants: current.participants.filter((item) => item.id !== participant.id),
+            votes: current.votes.filter((vote) => vote.participant_id !== participant.id),
+          }
+        : current,
+    );
+
+    try {
+      await deleteParticipantRequest(state.room.id, participant.id, hostToken);
+      await loadRoom(state.room.code);
+    } catch (error) {
+      setState(previousState);
+      showError(error, t("error.deleteParticipant"));
+    } finally {
+      setPending({ deleteParticipantId: null });
+    }
+  }, [currentParticipant?.id, hostToken, isHost, loadRoom, setPending, showError, state, t]);
+
   const archiveIssue = useCallback(async (issue: Issue) => {
     if (!state || !isHost) {
       return;
@@ -675,6 +708,7 @@ export function useRoomSession() {
     addIssue,
     editIssue,
     deleteIssue,
+    deleteParticipant,
     archiveIssue,
     unarchiveIssue,
     importIssues,

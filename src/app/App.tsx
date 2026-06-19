@@ -52,6 +52,7 @@ function AppContent() {
       onAddIssue={session.addIssue}
       onArchiveIssue={session.archiveIssue}
       onDeleteIssue={session.deleteIssue}
+      onDeleteParticipant={session.deleteParticipant}
       onEditIssue={session.editIssue}
       onImportIssues={session.importIssues}
       onUnarchiveIssue={session.unarchiveIssue}

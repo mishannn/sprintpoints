@@ -181,7 +181,16 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      delete_participant_as_host: {
+        Args: {
+          p_room_id: string;
+          p_participant_id: string;
+          p_host_token: string;
+        };
+        Returns: void;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
