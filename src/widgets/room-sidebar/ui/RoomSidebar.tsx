@@ -202,7 +202,7 @@ export function RoomSidebar({
                 const link = issue.link ?? "";
 
             return (
-                  <Paper key={issue.id} withBorder={issue.id === activeIssue?.id} bg={issue.id === activeIssue?.id ? "white" : "gray.0"} p="xs" radius="md">
+                  <Paper key={issue.id} withBorder bg={issue.id === activeIssue?.id ? "white" : "gray.0"} p="xs" radius="md">
                     <Stack gap={6}>
                       <UnstyledButton type="button" onClick={() => onActivateIssue(issue)} disabled={!isHost} p={6}>
                         <Stack gap={4}>

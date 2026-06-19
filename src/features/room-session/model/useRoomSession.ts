@@ -61,6 +61,28 @@ const idlePendingSync: PendingSync = {
   unarchiveIssueId: null,
 };
 
+function findVisibleActiveIssue(issues: Issue[], activeIssues: Issue[], activeIssueId: string | null) {
+  if (!activeIssueId) {
+    return activeIssues[0] ?? null;
+  }
+
+  const directIssue = activeIssues.find((issue) => issue.id === activeIssueId);
+  if (directIssue) {
+    return directIssue;
+  }
+
+  const issueIndex = issues.findIndex((issue) => issue.id === activeIssueId);
+  if (issueIndex < 0) {
+    return activeIssues[0] ?? null;
+  }
+
+  return (
+    issues.slice(issueIndex + 1).find((issue) => !issue.archived_at) ??
+    [...issues.slice(0, issueIndex)].reverse().find((issue) => !issue.archived_at) ??
+    null
+  );
+}
+
 export function useRoomSession() {
   const { t } = useI18n();
   const [state, setState] = useState<RoomState | null>(null);
@@ -77,8 +99,8 @@ export function useRoomSession() {
   const activeIssues = useMemo(() => state?.issues.filter((issue) => !issue.archived_at) ?? [], [state?.issues]);
   const archivedIssues = useMemo(() => state?.issues.filter((issue) => issue.archived_at) ?? [], [state?.issues]);
   const activeIssue = useMemo(
-    () => activeIssues.find((issue) => issue.id === state?.room.active_issue_id) ?? activeIssues[0] ?? null,
-    [activeIssues, state?.room.active_issue_id],
+    () => findVisibleActiveIssue(state?.issues ?? [], activeIssues, state?.room.active_issue_id ?? null),
+    [activeIssues, state],
   );
   const voters = state?.participants.filter((participant) => !participant.is_spectator) ?? [];
   const voterIds = useMemo(() => new Set(voters.map((participant) => participant.id)), [voters]);
