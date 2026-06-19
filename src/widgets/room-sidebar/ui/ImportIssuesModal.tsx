@@ -159,6 +159,7 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
                     data={columnOptions}
                     value={mapping.title === null ? null : String(mapping.title)}
                     onChange={(value) => updateMapping("title", value)}
+                    searchable
                     required
                   />
                   <Select
@@ -168,6 +169,7 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
                     value={mapping.description === null ? null : String(mapping.description)}
                     onChange={(value) => updateMapping("description", value)}
                     clearable
+                    searchable
                   />
                   <Select
                     label={t("common.link")}
@@ -176,6 +178,7 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
                     value={mapping.link === null ? null : String(mapping.link)}
                     onChange={(value) => updateMapping("link", value)}
                     clearable
+                    searchable
                   />
                   <Select
                     label={t("common.estimate")}
@@ -184,6 +187,7 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
                     value={mapping.estimate === null ? null : String(mapping.estimate)}
                     onChange={(value) => updateMapping("estimate", value)}
                     clearable
+                    searchable
                   />
                 </SimpleGrid>
                 <TextInput
