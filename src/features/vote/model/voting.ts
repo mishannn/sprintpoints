@@ -1,61 +1,37 @@
-import { supabase } from "../../../shared/api/supabase";
-import { AppError } from "../../../shared/lib/AppError";
+import { apiRequest } from "../../../shared/api/client";
 
-export async function submitVote(roomId: string, issueId: string, participantId: string, value: string) {
-  if (!supabase) {
-    throw new AppError("supabaseMissing");
-  }
-
-  const { error } = await supabase.from("votes").upsert(
+export async function submitVote(roomId: string, issueId: string, participantId: string, participantToken: string, value: string) {
+  await apiRequest<void>(
+    `/rooms/${encodeURIComponent(roomId)}/issues/${encodeURIComponent(issueId)}/votes/${encodeURIComponent(participantId)}`,
     {
-      room_id: roomId,
-      issue_id: issueId,
-      participant_id: participantId,
-      value,
+      body: { value },
+      errorCode: "saveVote",
+      method: "PUT",
+      participantToken,
     },
-    { onConflict: "issue_id,participant_id" },
   );
-
-  if (error) {
-    throw new AppError("saveVote", { cause: error });
-  }
 }
 
-export async function revealRoomVotes(roomId: string) {
-  if (!supabase) {
-    throw new AppError("supabaseMissing");
-  }
-
-  const { error } = await supabase.from("rooms").update({ revealed: true }).eq("id", roomId);
-
-  if (error) {
-    throw new AppError("revealVotes", { cause: error });
-  }
+export async function revealRoomVotes(roomId: string, hostToken: string) {
+  await apiRequest<void>(`/rooms/${encodeURIComponent(roomId)}/reveal`, {
+    errorCode: "revealVotes",
+    hostToken,
+    method: "PATCH",
+  });
 }
 
-export async function resetIssueVoting(roomId: string, issueId: string) {
-  if (!supabase) {
-    throw new AppError("supabaseMissing");
-  }
-
-  const [{ error: voteError }, { error: roomError }] = await Promise.all([
-    supabase.from("votes").delete().eq("issue_id", issueId),
-    supabase.from("rooms").update({ revealed: false }).eq("id", roomId),
-  ]);
-
-  if (voteError || roomError) {
-    throw new AppError("resetVoting", { cause: voteError ?? roomError });
-  }
+export async function resetIssueVoting(roomId: string, issueId: string, hostToken: string) {
+  await apiRequest<void>(`/rooms/${encodeURIComponent(roomId)}/issues/${encodeURIComponent(issueId)}/reset-votes`, {
+    errorCode: "resetVoting",
+    hostToken,
+    method: "POST",
+  });
 }
 
-export async function deleteParticipantIssueVote(issueId: string, participantId: string) {
-  if (!supabase) {
-    throw new AppError("supabaseMissing");
-  }
-
-  const { error } = await supabase.from("votes").delete().eq("issue_id", issueId).eq("participant_id", participantId);
-
-  if (error) {
-    throw new AppError("saveVote", { cause: error });
-  }
+export async function deleteParticipantIssueVote(issueId: string, participantId: string, participantToken: string) {
+  await apiRequest<void>(`/issues/${encodeURIComponent(issueId)}/votes/${encodeURIComponent(participantId)}`, {
+    errorCode: "saveVote",
+    method: "DELETE",
+    participantToken,
+  });
 }

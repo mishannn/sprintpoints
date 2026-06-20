@@ -1,0 +1,16 @@
+.git
+.mypy_cache
+.pytest_cache
+.venv
+dist
+node_modules
+planningpoker.sqlite3
+*.sqlite3
+*.sqlite
+*.db
+__pycache__
+*.pyc
+.env
+.env.*
+!.env.example
+docker/pgadmin/pgpass

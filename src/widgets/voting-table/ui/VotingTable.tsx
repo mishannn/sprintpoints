@@ -296,7 +296,8 @@ export function VotingTable({
             {t("action.reset")}
             </Button>
             <Select
-              value={activeIssue?.estimate ?? ""}
+              key={activeIssue?.id ?? "no-active-issue"}
+              value={activeIssue?.estimate || null}
               onChange={(value) => onSetEstimate(value ?? "")}
               disabled={!activeIssue}
               aria-label={t("aria.finalEstimate")}

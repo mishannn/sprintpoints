@@ -1,4 +1,4 @@
-import { supabase } from "../../../shared/api/supabase";
+import { apiRequest } from "../../../shared/api/client";
 import type { Issue } from "../../../entities/room/model/types";
 import { AppError } from "../../../shared/lib/AppError";
 import { normalizeEstimate } from "./estimate";
@@ -13,230 +13,110 @@ export type IssueImportInput = IssueDetailsInput & {
   estimate: string;
 };
 
-export async function createIssue(roomId: string, details: IssueDetailsInput, currentIssues: Issue[]) {
-  if (!supabase) {
-    throw new AppError("supabaseMissing");
-  }
-
+export async function createIssue(roomId: string, details: IssueDetailsInput, hostToken: string) {
   const trimmedTitle = details.title.trim();
   if (!trimmedTitle) {
     return null;
   }
 
-  const description = details.description.trim();
-  const link = details.link.trim();
-  const nextPosition = Math.max(0, ...currentIssues.map((issue) => issue.position)) + 1;
-  const { data: issue, error } = await supabase
-    .from("issues")
-    .insert({ room_id: roomId, title: trimmedTitle, description, link, position: nextPosition })
-    .select("*")
-    .single();
-
-  if (error || !issue) {
-    throw new AppError("addStory", { cause: error });
-  }
-
-  const { error: roomError } = await supabase.from("rooms").update({ active_issue_id: issue.id, revealed: false }).eq("id", roomId);
-
-  if (roomError) {
-    throw new AppError("activateNewStory", { cause: roomError });
-  }
-
-  return issue;
+  return apiRequest<Issue | null>(`/rooms/${encodeURIComponent(roomId)}/issues`, {
+    body: {
+      title: trimmedTitle,
+      description: details.description.trim(),
+      link: details.link.trim(),
+    },
+    errorCode: "addStory",
+    hostToken,
+  });
 }
 
-export async function importIssues(roomId: string, details: IssueImportInput[], currentIssues: Issue[], activeIssueId: string | null) {
-  if (!supabase) {
-    throw new AppError("supabaseMissing");
-  }
-
-  const startPosition = Math.max(0, ...currentIssues.map((issue) => issue.position)) + 1;
-  const rows = details
-    .map((issue, index) => ({
-      room_id: roomId,
+export async function importIssues(roomId: string, details: IssueImportInput[], hostToken: string) {
+  const issues = details
+    .map((issue) => ({
       title: issue.title.trim(),
       description: issue.description.trim(),
       link: issue.link.trim(),
-      estimate: normalizeEstimate(issue.estimate) || null,
-      position: startPosition + index,
+      estimate: normalizeEstimate(issue.estimate) || "",
     }))
     .filter((issue) => issue.title);
 
-  if (rows.length === 0) {
+  if (issues.length === 0) {
     return [];
   }
 
-  const { data: issues, error } = await supabase.from("issues").insert(rows).select("*");
-
-  if (error || !issues) {
-    throw new AppError("importStories", { cause: error });
-  }
-
-  if (!activeIssueId && issues[0]) {
-    const { error: roomError } = await supabase
-      .from("rooms")
-      .update({ active_issue_id: issues[0].id, revealed: false })
-      .eq("id", roomId);
-
-    if (roomError) {
-      throw new AppError("activateImportedStory", { cause: roomError });
-    }
-  }
-
-  return issues;
+  return apiRequest<Issue[]>(`/rooms/${encodeURIComponent(roomId)}/issues/import`, {
+    body: { issues },
+    errorCode: "importStories",
+    hostToken,
+  });
 }
 
-export async function updateIssueDetails(issueId: string, details: IssueDetailsInput) {
-  if (!supabase) {
-    throw new AppError("supabaseMissing");
-  }
-
+export async function updateIssueDetails(issueId: string, details: IssueDetailsInput, hostToken: string) {
   const trimmedTitle = details.title.trim();
   if (!trimmedTitle) {
     throw new AppError("storyTitleRequired");
   }
 
-  const { data: issue, error } = await supabase
-    .from("issues")
-    .update({
+  return apiRequest<Issue>(`/issues/${encodeURIComponent(issueId)}`, {
+    body: {
       title: trimmedTitle,
       description: details.description.trim(),
       link: details.link.trim(),
-    })
-    .eq("id", issueId)
-    .select("*")
-    .single();
-
-  if (error || !issue) {
-    throw new AppError("updateStory", { cause: error });
-  }
-
-  return issue;
+    },
+    errorCode: "updateStory",
+    hostToken,
+    method: "PATCH",
+  });
 }
 
-export async function deleteIssue(roomId: string, issueId: string, nextActiveIssueId?: string | null) {
-  if (!supabase) {
-    throw new AppError("supabaseMissing");
-  }
-
-  const { error } = await supabase.from("issues").delete().eq("id", issueId).eq("room_id", roomId);
-
-  if (error) {
-    throw new AppError("deleteStory", { cause: error });
-  }
-
-  if (nextActiveIssueId === undefined) {
-    return;
-  }
-
-  const { error: roomError } = await supabase.from("rooms").update({ active_issue_id: nextActiveIssueId, revealed: false }).eq("id", roomId);
-
-  if (roomError) {
-    throw new AppError("activateStoryAfterDelete", { cause: roomError });
-  }
+export async function deleteIssue(roomId: string, issueId: string, hostToken: string, nextActiveIssueId?: string | null) {
+  const params = nextActiveIssueId === undefined ? "" : `?next_active_issue_id=${encodeURIComponent(nextActiveIssueId ?? "")}`;
+  await apiRequest<void>(`/rooms/${encodeURIComponent(roomId)}/issues/${encodeURIComponent(issueId)}${params}`, {
+    errorCode: "deleteStory",
+    hostToken,
+    method: "DELETE",
+  });
 }
 
-export async function archiveIssue(roomId: string, issueId: string, nextActiveIssueId?: string | null) {
-  if (!supabase) {
-    throw new AppError("supabaseMissing");
-  }
-
-  const { data: issue, error } = await supabase
-    .from("issues")
-    .update({ archived_at: new Date().toISOString() })
-    .eq("id", issueId)
-    .eq("room_id", roomId)
-    .select("*")
-    .single();
-
-  if (error || !issue) {
-    throw new AppError("archiveStory", { cause: error });
-  }
-
-  if (nextActiveIssueId === undefined) {
-    return issue;
-  }
-
-  const { error: roomError } = await supabase.from("rooms").update({ active_issue_id: nextActiveIssueId, revealed: false }).eq("id", roomId);
-
-  if (roomError) {
-    throw new AppError("activateStoryAfterArchive", { cause: roomError });
-  }
-
-  return issue;
+export async function archiveIssue(roomId: string, issueId: string, hostToken: string, nextActiveIssueId?: string | null) {
+  return apiRequest<Issue>(`/rooms/${encodeURIComponent(roomId)}/issues/${encodeURIComponent(issueId)}/archive`, {
+    body: { nextActiveIssueId: nextActiveIssueId ?? null },
+    errorCode: "archiveStory",
+    hostToken,
+    method: "PATCH",
+  });
 }
 
-export async function archiveEstimatedIssues(roomId: string, nextActiveIssueId?: string | null) {
-  if (!supabase) {
-    throw new AppError("supabaseMissing");
-  }
-
-  const { data: issues, error } = await supabase
-    .from("issues")
-    .update({ archived_at: new Date().toISOString() })
-    .eq("room_id", roomId)
-    .is("archived_at", null)
-    .not("estimate", "is", null)
-    .neq("estimate", "")
-    .select("*");
-
-  if (error || !issues) {
-    throw new AppError("archiveEstimatedStories", { cause: error });
-  }
-
-  if (nextActiveIssueId === undefined) {
-    return issues;
-  }
-
-  const { error: roomError } = await supabase.from("rooms").update({ active_issue_id: nextActiveIssueId, revealed: false }).eq("id", roomId);
-
-  if (roomError) {
-    throw new AppError("activateStoryAfterArchive", { cause: roomError });
-  }
-
-  return issues;
+export async function archiveEstimatedIssues(roomId: string, hostToken: string, nextActiveIssueId?: string | null) {
+  return apiRequest<Issue[]>(`/rooms/${encodeURIComponent(roomId)}/issues/archive-estimated`, {
+    body: { nextActiveIssueId: nextActiveIssueId ?? null },
+    errorCode: "archiveEstimatedStories",
+    hostToken,
+  });
 }
 
-export async function unarchiveIssue(roomId: string, issueId: string) {
-  if (!supabase) {
-    throw new AppError("supabaseMissing");
-  }
-
-  const { data: issue, error } = await supabase
-    .from("issues")
-    .update({ archived_at: null })
-    .eq("id", issueId)
-    .eq("room_id", roomId)
-    .select("*")
-    .single();
-
-  if (error || !issue) {
-    throw new AppError("unarchiveStory", { cause: error });
-  }
-
-  return issue;
+export async function unarchiveIssue(roomId: string, issueId: string, hostToken: string) {
+  return apiRequest<Issue>(`/rooms/${encodeURIComponent(roomId)}/issues/${encodeURIComponent(issueId)}/unarchive`, {
+    errorCode: "unarchiveStory",
+    hostToken,
+    method: "PATCH",
+  });
 }
 
-export async function activateIssue(roomId: string, issueId: string) {
-  if (!supabase) {
-    throw new AppError("supabaseMissing");
-  }
-
-  const { error } = await supabase.from("rooms").update({ active_issue_id: issueId, revealed: false }).eq("id", roomId);
-
-  if (error) {
-    throw new AppError("activateStory", { cause: error });
-  }
+export async function activateIssue(roomId: string, issueId: string, hostToken: string) {
+  await apiRequest<void>(`/rooms/${encodeURIComponent(roomId)}/active-issue`, {
+    body: { issueId },
+    errorCode: "activateStory",
+    hostToken,
+    method: "PATCH",
+  });
 }
 
-export async function saveIssueEstimate(issueId: string, value: string) {
-  if (!supabase) {
-    throw new AppError("supabaseMissing");
-  }
-
-  const { error } = await supabase.from("issues").update({ estimate: value }).eq("id", issueId);
-
-  if (error) {
-    throw new AppError("saveEstimate", { cause: error });
-  }
+export async function saveIssueEstimate(issueId: string, value: string, hostToken: string) {
+  await apiRequest<void>(`/issues/${encodeURIComponent(issueId)}/estimate`, {
+    body: { value },
+    errorCode: "saveEstimate",
+    hostToken,
+    method: "PATCH",
+  });
 }

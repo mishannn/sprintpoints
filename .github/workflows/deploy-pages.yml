@@ -21,8 +21,7 @@ jobs:
     environment:
       name: github-pages
     env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || vars.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || vars.VITE_SUPABASE_ANON_KEY }}
+      VITE_API_URL: ${{ vars.VITE_API_URL }}
       VITE_BASE_PATH: ${{ vars.VITE_BASE_PATH }}
     steps:
       - name: Checkout
@@ -36,11 +35,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Validate Supabase config
-        run: |
-          test -n "$VITE_SUPABASE_URL" || { echo "VITE_SUPABASE_URL is not set"; exit 1; }
-          test -n "$VITE_SUPABASE_ANON_KEY" || { echo "VITE_SUPABASE_ANON_KEY is not set"; exit 1; }
 
       - name: Build
         run: npm run build

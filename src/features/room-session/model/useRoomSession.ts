@@ -3,6 +3,7 @@ import { createPlanningRoom } from "../../create-room/model/createRoom";
 import { joinPlanningRoom } from "../../join-room/model/joinRoom";
 import {
   deleteParticipant as deleteParticipantRequest,
+  sendParticipantHeartbeat,
   updateParticipantSpectatorMode,
 } from "../../manage-participants/model/participants";
 import {
@@ -22,10 +23,10 @@ import { deleteParticipantIssueVote, resetIssueVoting, revealRoomVotes, submitVo
 import { loadRoomState } from "../../../entities/room/model/roomApi";
 import type { Issue, Notice, Participant, RoomState } from "../../../entities/room/model/types";
 import { distribution, voteSummary } from "../../../entities/room/model/voteStats";
-import { hasSupabaseConfig, supabase } from "../../../shared/api/supabase";
 import { translateError, useI18n } from "../../../shared/i18n";
 import { hostKey, participantKey } from "../../../shared/lib/roomStorage";
 import { getJoinCodeFromUrl, setRoomUrl } from "../../../shared/lib/roomUrl";
+import { normalizeCode } from "../../../shared/lib/roomCode";
 
 export type PendingSync = {
   voteValue: string | null;
@@ -121,16 +122,21 @@ export function useRoomSession() {
   }, []);
 
   const loadRoom = useCallback(async (code: string) => {
-    const roomState = await loadRoomState(code);
+    const normalizedCode = normalizeCode(code);
+    const savedParticipantToken = localStorage.getItem(participantKey(normalizedCode));
+    const savedHostToken = localStorage.getItem(hostKey(normalizedCode));
+    const roomState = await loadRoomState(normalizedCode, {
+      hostToken: savedHostToken,
+      participantToken: savedParticipantToken,
+    });
 
     setState(roomState);
     setRoomUrl(roomState.room.code);
 
-    const savedParticipantToken = localStorage.getItem(participantKey(roomState.room.id));
     const existingParticipant =
       roomState.participants.find((participant) => participant.token === savedParticipantToken) ?? null;
     setCurrentParticipant(existingParticipant);
-    setHostToken(localStorage.getItem(hostKey(roomState.room.id)));
+    setHostToken(savedHostToken);
 
     return roomState;
   }, []);
@@ -158,47 +164,45 @@ export function useRoomSession() {
 
   useEffect(() => {
     const code = getJoinCodeFromUrl();
-    if (!code || !hasSupabaseConfig) {
+    if (!code) {
+      return;
+    }
+
+    const normalizedCode = normalizeCode(code);
+    const hasStoredRoomAuth =
+      Boolean(localStorage.getItem(participantKey(normalizedCode))) || Boolean(localStorage.getItem(hostKey(normalizedCode)));
+
+    if (!hasStoredRoomAuth) {
       return;
     }
 
     setLoading(true);
-    loadRoom(code)
+    loadRoom(normalizedCode)
       .catch((error) => showError(error, t("error.loadRoom")))
       .finally(() => setLoading(false));
   }, [loadRoom, showError, t]);
 
   useEffect(() => {
-    if (!state || !supabase) {
+    if (!state) {
       return;
     }
 
-    const client = supabase;
-    const channel = client
-      .channel(`room-${state.room.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "rooms", filter: `id=eq.${state.room.id}` }, refreshRoomState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "participants", filter: `room_id=eq.${state.room.id}` }, refreshRoomState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "issues", filter: `room_id=eq.${state.room.id}` }, refreshRoomState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "votes", filter: `room_id=eq.${state.room.id}` }, refreshRoomState)
-      .subscribe();
+    const interval = window.setInterval(() => {
+      void refreshRoomState();
+    }, 2000);
 
     return () => {
-      void client.removeChannel(channel);
+      window.clearInterval(interval);
     };
   }, [refreshRoomState, state]);
 
   useEffect(() => {
-    if (!currentParticipant || !supabase) {
+    if (!currentParticipant) {
       return;
     }
 
-    const client = supabase;
     const interval = window.setInterval(() => {
-      void client
-        .from("participants")
-        .update({ last_seen_at: new Date().toISOString() })
-        .eq("id", currentParticipant.id)
-        .eq("token", currentParticipant.token);
+      void sendParticipantHeartbeat(currentParticipant.id, currentParticipant.token);
     }, 30000);
 
     return () => window.clearInterval(interval);
@@ -215,8 +219,8 @@ export function useRoomSession() {
         roomName: t("fallback.roomName"),
       });
 
-      localStorage.setItem(participantKey(result.state.room.id), result.participantToken);
-      localStorage.setItem(hostKey(result.state.room.id), result.hostToken);
+      localStorage.setItem(participantKey(result.state.room.code), result.participantToken);
+      localStorage.setItem(hostKey(result.state.room.code), result.hostToken);
       setCurrentParticipant(result.participant);
       setHostToken(result.hostToken);
       setState(result.state);
@@ -236,7 +240,7 @@ export function useRoomSession() {
     try {
       const result = await joinPlanningRoom(code, name, isSpectator);
 
-      localStorage.setItem(participantKey(result.room.id), result.participantToken);
+      localStorage.setItem(participantKey(result.room.code), result.participantToken);
       setCurrentParticipant(result.participant);
       setRoomUrl(result.room.code);
       await loadRoom(result.room.code);
@@ -287,7 +291,7 @@ export function useRoomSession() {
     });
 
     try {
-      await submitVote(state.room.id, activeIssue.id, currentParticipant.id, value);
+      await submitVote(state.room.id, activeIssue.id, currentParticipant.id, currentParticipant.token, value);
       if (voteSyncId.current === requestId) {
         await loadRoom(state.room.code);
       }
@@ -315,7 +319,7 @@ export function useRoomSession() {
   }, [activeIssue, currentParticipant, currentVote, loadRoom, showError, state, setPending, t]);
 
   const revealVotes = useCallback(async () => {
-    if (!state || !isHost) {
+    if (!state || !isHost || !hostToken) {
       return;
     }
 
@@ -326,7 +330,7 @@ export function useRoomSession() {
     setState((current) => (current ? { ...current, room: { ...current.room, revealed: true } } : current));
 
     try {
-      await revealRoomVotes(state.room.id);
+      await revealRoomVotes(state.room.id, hostToken);
       await loadRoom(state.room.code);
     } catch (error) {
       setState((current) => (current ? { ...current, room: { ...current.room, revealed: wasRevealed } } : current));
@@ -334,10 +338,10 @@ export function useRoomSession() {
     } finally {
       setPending({ revealVotes: false });
     }
-  }, [isHost, loadRoom, setPending, showError, state, t]);
+  }, [hostToken, isHost, loadRoom, setPending, showError, state, t]);
 
   const resetVoting = useCallback(async () => {
-    if (!state || !activeIssue || !isHost) {
+    if (!state || !activeIssue || !isHost || !hostToken) {
       return;
     }
 
@@ -357,7 +361,7 @@ export function useRoomSession() {
     );
 
     try {
-      await resetIssueVoting(state.room.id, activeIssue.id);
+      await resetIssueVoting(state.room.id, activeIssue.id, hostToken);
       await loadRoom(state.room.code);
     } catch (error) {
       setState((current) =>
@@ -373,10 +377,10 @@ export function useRoomSession() {
     } finally {
       setPending({ resetVoting: false });
     }
-  }, [activeIssue, isHost, loadRoom, setPending, showError, state, t]);
+  }, [activeIssue, hostToken, isHost, loadRoom, setPending, showError, state, t]);
 
   const addIssue = useCallback(async (details: IssueDetailsInput) => {
-    if (!state || !isHost) {
+    if (!state || !isHost || !hostToken) {
       return false;
     }
 
@@ -384,7 +388,7 @@ export function useRoomSession() {
     setPending({ addIssue: true });
 
     try {
-      const issue = await createIssue(state.room.id, details, state.issues);
+      const issue = await createIssue(state.room.id, details, hostToken);
       if (issue) {
         setState((current) =>
           current
@@ -404,10 +408,10 @@ export function useRoomSession() {
     } finally {
       setPending({ addIssue: false });
     }
-  }, [isHost, loadRoom, setPending, showError, state, t]);
+  }, [hostToken, isHost, loadRoom, setPending, showError, state, t]);
 
   const editIssue = useCallback(async (issue: Issue, details: IssueDetailsInput) => {
-    if (!state || !isHost) {
+    if (!state || !isHost || !hostToken) {
       return false;
     }
 
@@ -431,7 +435,7 @@ export function useRoomSession() {
     );
 
     try {
-      const updatedIssue = await updateIssueDetails(issue.id, details);
+      const updatedIssue = await updateIssueDetails(issue.id, details, hostToken);
       setState((current) =>
         current
           ? {
@@ -456,10 +460,10 @@ export function useRoomSession() {
     } finally {
       setPending({ editIssueId: null });
     }
-  }, [isHost, loadRoom, setPending, showError, state, t]);
+  }, [hostToken, isHost, loadRoom, setPending, showError, state, t]);
 
   const deleteIssue = useCallback(async (issue: Issue) => {
-    if (!state || !isHost) {
+    if (!state || !isHost || !hostToken) {
       return;
     }
 
@@ -486,7 +490,7 @@ export function useRoomSession() {
     );
 
     try {
-      await deleteIssueRequest(state.room.id, issue.id, isDeletingActiveIssue ? nextActiveIssueId : undefined);
+      await deleteIssueRequest(state.room.id, issue.id, hostToken, isDeletingActiveIssue ? nextActiveIssueId : undefined);
       await loadRoom(state.room.code);
     } catch (error) {
       setState(previousState);
@@ -494,7 +498,7 @@ export function useRoomSession() {
     } finally {
       setPending({ deleteIssueId: null });
     }
-  }, [isHost, loadRoom, setPending, showError, state, t]);
+  }, [hostToken, isHost, loadRoom, setPending, showError, state, t]);
 
   const deleteParticipant = useCallback(async (participant: Participant) => {
     if (!state || !isHost || !hostToken || participant.id === currentParticipant?.id) {
@@ -557,7 +561,9 @@ export function useRoomSession() {
     try {
       await Promise.all([
         updateParticipantSpectatorMode(currentParticipant.id, currentParticipant.token, nextIsSpectator),
-        nextIsSpectator && activeIssue ? deleteParticipantIssueVote(activeIssue.id, currentParticipant.id) : Promise.resolve(),
+        nextIsSpectator && activeIssue
+          ? deleteParticipantIssueVote(activeIssue.id, currentParticipant.id, currentParticipant.token)
+          : Promise.resolve(),
       ]);
       await loadRoom(state.room.code);
       setNotice({ kind: "success", message: nextIsSpectator ? t("notice.observerMode") : t("notice.voterMode") });
@@ -571,7 +577,7 @@ export function useRoomSession() {
   }, [activeIssue, currentParticipant, loadRoom, setPending, showError, state, t]);
 
   const archiveIssue = useCallback(async (issue: Issue) => {
-    if (!state || !isHost) {
+    if (!state || !isHost || !hostToken) {
       return;
     }
 
@@ -598,7 +604,7 @@ export function useRoomSession() {
     );
 
     try {
-      await archiveIssueRequest(state.room.id, issue.id, isArchivingActiveIssue ? nextActiveIssueId : undefined);
+      await archiveIssueRequest(state.room.id, issue.id, hostToken, isArchivingActiveIssue ? nextActiveIssueId : undefined);
       await loadRoom(state.room.code);
     } catch (error) {
       setState(previousState);
@@ -606,10 +612,10 @@ export function useRoomSession() {
     } finally {
       setPending({ archiveIssueId: null });
     }
-  }, [isHost, loadRoom, setPending, showError, state, t]);
+  }, [hostToken, isHost, loadRoom, setPending, showError, state, t]);
 
   const archiveEstimatedIssues = useCallback(async () => {
-    if (!state || !isHost) {
+    if (!state || !isHost || !hostToken) {
       return;
     }
 
@@ -650,7 +656,7 @@ export function useRoomSession() {
     );
 
     try {
-      await archiveEstimatedIssuesRequest(state.room.id, isArchivingActiveIssue ? nextActiveIssueId : undefined);
+      await archiveEstimatedIssuesRequest(state.room.id, hostToken, isArchivingActiveIssue ? nextActiveIssueId : undefined);
       await loadRoom(state.room.code);
     } catch (error) {
       setState(previousState);
@@ -658,10 +664,10 @@ export function useRoomSession() {
     } finally {
       setPending({ archiveEstimatedIssues: false });
     }
-  }, [activeIssues, isHost, loadRoom, setPending, showError, state, t]);
+  }, [activeIssues, hostToken, isHost, loadRoom, setPending, showError, state, t]);
 
   const unarchiveIssue = useCallback(async (issue: Issue) => {
-    if (!state || !isHost) {
+    if (!state || !isHost || !hostToken) {
       return;
     }
 
@@ -679,7 +685,7 @@ export function useRoomSession() {
     );
 
     try {
-      const updatedIssue = await unarchiveIssueRequest(state.room.id, issue.id);
+      const updatedIssue = await unarchiveIssueRequest(state.room.id, issue.id, hostToken);
       setState((current) =>
         current
           ? {
@@ -702,10 +708,10 @@ export function useRoomSession() {
     } finally {
       setPending({ unarchiveIssueId: null });
     }
-  }, [isHost, loadRoom, setPending, showError, state, t]);
+  }, [hostToken, isHost, loadRoom, setPending, showError, state, t]);
 
   const importIssues = useCallback(async (details: IssueImportInput[]) => {
-    if (!state || !isHost) {
+    if (!state || !isHost || !hostToken) {
       return false;
     }
 
@@ -713,7 +719,7 @@ export function useRoomSession() {
     setPending({ addIssue: true });
 
     try {
-      const issues = await importIssuesRequest(state.room.id, details, state.issues, state.room.active_issue_id);
+      const issues = await importIssuesRequest(state.room.id, details, hostToken);
       await loadRoom(state.room.code);
       setNotice({ kind: "success", message: t("notice.importedStories", { count: issues.length }) });
       return issues.length > 0;
@@ -723,10 +729,10 @@ export function useRoomSession() {
     } finally {
       setPending({ addIssue: false });
     }
-  }, [isHost, loadRoom, setPending, showError, state, t]);
+  }, [hostToken, isHost, loadRoom, setPending, showError, state, t]);
 
   const activateIssue = useCallback(async (issue: Issue) => {
-    if (!state || !isHost) {
+    if (!state || !isHost || !hostToken) {
       return;
     }
 
@@ -747,7 +753,7 @@ export function useRoomSession() {
     );
 
     try {
-      await activateIssueRequest(state.room.id, issue.id);
+      await activateIssueRequest(state.room.id, issue.id, hostToken);
       if (activeIssueSyncId.current === requestId) {
         await loadRoom(state.room.code);
       }
@@ -766,10 +772,10 @@ export function useRoomSession() {
     } finally {
       setPendingSync((current) => (activeIssueSyncId.current === requestId ? { ...current, activeIssueId: null } : current));
     }
-  }, [isHost, loadRoom, setPending, showError, state, t]);
+  }, [hostToken, isHost, loadRoom, setPending, showError, state, t]);
 
   const setEstimate = useCallback(async (value: string) => {
-    if (!activeIssue || !isHost) {
+    if (!activeIssue || !isHost || !hostToken) {
       return;
     }
 
@@ -789,7 +795,7 @@ export function useRoomSession() {
     );
 
     try {
-      await saveIssueEstimate(activeIssue.id, value);
+      await saveIssueEstimate(activeIssue.id, value, hostToken);
       if (estimateSyncId.current === requestId && state) {
         await loadRoom(state.room.code);
       }
@@ -810,7 +816,7 @@ export function useRoomSession() {
     } finally {
       setPendingSync((current) => (estimateSyncId.current === requestId ? { ...current, estimate: false } : current));
     }
-  }, [activeIssue, isHost, loadRoom, setPending, showError, state, t]);
+  }, [activeIssue, hostToken, isHost, loadRoom, setPending, showError, state, t]);
 
   return {
     state,

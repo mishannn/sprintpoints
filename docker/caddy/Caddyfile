@@ -1,0 +1,9 @@
+sprintpoints.{$BASE_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy backend:8000
+}
+
+admin.{$BASE_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy db-admin:80
+}

@@ -23,7 +23,6 @@ export type AppErrorCode =
   | "saveEstimate"
   | "saveVote"
   | "storyTitleRequired"
-  | "supabaseMissing"
   | "unarchiveStory"
   | "updateParticipantMode"
   | "updateStory";

@@ -1,73 +1,109 @@
 # Sprint Points
 
-Sprint Points is a realtime estimation room for agile teams. Create a room, invite teammates with a link, vote privately, reveal estimates together, and keep the story queue visible during refinement or sprint planning.
+Sprint Points is a realtime-style planning poker app for agile teams. Create a room, invite teammates with a link, vote privately, reveal estimates together, and keep the story queue visible during refinement or sprint planning.
 
-It is built as a lightweight product: a static React frontend that can be hosted on GitHub Pages, backed by Supabase Cloud for storage and realtime sync.
-
-## Product Highlights
-
-- **Instant rooms**: facilitators can create a room without account setup in the app.
-- **Invite-link collaboration**: participants join by room code or shared URL.
-- **Private voting**: votes stay hidden until the facilitator reveals them.
-- **Realtime updates**: participants, stories, votes, reveals, and resets sync across connected clients.
-- **Story queue**: add, edit, delete, and archive stories; switch the active story; store the final estimate; and keep story details visible while voting.
-- **Estimate references**: after choosing a rating, see active and archived stories with the same saved estimate directly under the vote cards.
-- **Archive modal**: keep completed stories out of the active queue while retaining them as reference material, with unarchive support when a story should return to the queue.
-- **Jira CSV workflow**: import stories from Jira-style CSV files with column mapping and optional link URL patterns, then export the room backlog back to CSV.
-- **Revealed vote table**: after reveal, show each participant's vote alongside the aggregate distribution.
-- **Spectator mode**: let stakeholders observe without affecting the vote count.
-- **Sync feedback**: optimistic updates and loading states keep slow realtime writes visible to the facilitator and participants.
-- **Setup guard**: missing Supabase configuration shows a setup-required screen instead of a broken room.
-- **Static hosting ready**: deploy the frontend to GitHub Pages with a GitHub Actions workflow.
+The app now uses a React/Vite frontend and a FastAPI backend backed by PostgreSQL in Docker Compose.
 
 ## Tech Stack
 
-- **Frontend**: React, TypeScript, Vite
-- **UI**: Mantine, lucide-react icons
-- **Backend**: Supabase Cloud Postgres
-- **Realtime**: Supabase Realtime via `postgres_changes`
-- **Hosting**: GitHub Pages
-
-## How It Works
-
-The frontend is a single-page app. Supabase stores room data in four tables:
-
-- `rooms`: room metadata, card set, reveal state, active story
-- `participants`: room members, spectator flag, heartbeat timestamp
-- `issues`: story queue, descriptions, links, order, final estimates, and archive timestamps
-- `votes`: one vote per participant per story
-
-The app subscribes to Supabase realtime changes and reloads room state when any relevant table changes.
+- Frontend: React, TypeScript, Vite
+- UI: Mantine, lucide-react icons
+- Backend: FastAPI, SQLAlchemy, PostgreSQL
+- Python package manager: uv
 
 ## Requirements
 
 - Node.js 24+
 - npm 11+
-- Supabase Cloud project
-- Supabase CLI if you want to apply migrations from your machine
+- Python 3.12+
+- uv
+- Docker and Docker Compose for VPS deployment
 
-## Quick Start
+## Production Start On A VPS
 
-Install dependencies:
+Create DNS `A` records for both application hostnames pointing at the VPS:
 
-```bash
-npm install
-```
+- `sprintpoints.<your-domain>`
+- `admin.<your-domain>`
 
-Create a local environment file:
+Then clone the repository, create `.env`, and start the stack from the project root:
 
 ```bash
 cp .env.example .env
 ```
 
-Set your Supabase values:
+Edit `.env` and set:
+
+- `BASE_DOMAIN`
+- `POSTGRES_PASSWORD`
+- `PGADMIN_DEFAULT_EMAIL`
+- `PGADMIN_DEFAULT_PASSWORD`
+
+Start Docker Compose:
 
 ```bash
-VITE_SUPABASE_URL=https://your-project-ref.supabase.co
-VITE_SUPABASE_ANON_KEY=your-public-anon-key
+docker compose up -d --build
 ```
 
-Start the frontend:
+This starts:
+
+- `caddy`: public HTTPS reverse proxy on ports `80` and `443`
+- `db`: PostgreSQL 17 with a persistent Docker volume
+- `backend`: FastAPI behind `https://sprintpoints.<your-domain>`
+- `db-admin`: pgAdmin behind `https://admin.<your-domain>`
+
+Health check:
+
+```bash
+curl https://sprintpoints.<your-domain>/api/health
+```
+
+The backend creates its database tables on startup. There are no copied legacy migrations.
+
+## Database Admin UI
+
+Docker Compose includes pgAdmin with a preconfigured login and a preconfigured connection to the app database.
+
+Open:
+
+```text
+https://admin.<your-domain>
+```
+
+Sign in with the credentials from `.env`:
+
+| Field | Value |
+| --- | --- |
+| Email | `PGADMIN_DEFAULT_EMAIL` |
+| Password | `PGADMIN_DEFAULT_PASSWORD` |
+
+The server named `Planning Poker` is imported automatically from `docker/pgadmin/servers.json`. Its database passfile is generated from the Postgres environment variables when the pgAdmin container starts, so users should not need to configure the database connection manually.
+
+pgAdmin stores its own UI metadata in the `pgadmin_data` Docker volume. The app data stays in the `postgres_data` volume.
+Caddy stores ACME certificates in the `caddy_data` Docker volume and issues certificates automatically when the DNS records resolve to the VPS.
+
+## Local Development
+
+Install frontend dependencies:
+
+```bash
+npm install
+```
+
+Install backend dependencies:
+
+```bash
+uv sync
+```
+
+For local backend development without Docker, provide a database URL and start FastAPI:
+
+```bash
+export DATABASE_URL=sqlite+pysqlite:///./planningpoker.sqlite3
+uv run uvicorn backend.app.main:app --reload
+```
+
+In another terminal, start the frontend:
 
 ```bash
 npm run dev
@@ -79,44 +115,66 @@ Open:
 http://localhost:5173/
 ```
 
-## Supabase Setup
-
-Create a Supabase Cloud project, then apply the migrations:
-
-```bash
-npx supabase login
-npx supabase link --project-ref your-project-ref
-npx supabase db push
-```
-
-The migration files are:
-
-```text
-supabase/migrations/20260610160000_init_planning_poker.sql
-supabase/migrations/20260610190000_add_issue_details.sql
-supabase/migrations/20260617133000_allow_issue_delete.sql
-supabase/migrations/20260617150000_add_issue_archive.sql
-```
-
-You can also run the migration manually in the Supabase SQL Editor.
+Vite proxies `/api` to `http://127.0.0.1:8000` during development.
 
 ## Environment Variables
 
 | Name | Required | Description |
 | --- | --- | --- |
-| `VITE_SUPABASE_URL` | Yes | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Yes | Supabase public anon key |
-| `VITE_BASE_PATH` | No | Override Vite base path, useful for custom domains |
+| `VITE_API_URL` | No | Frontend API base URL. Defaults to `/api`. |
+| `VITE_BASE_PATH` | No | Override Vite base path, useful for custom domains. |
+| `DATABASE_URL` | No | SQLAlchemy database URL. Compose sets this to PostgreSQL. Local default is SQLite. |
+| `PLANNING_POKER_CORS_ORIGINS` | No | Comma-separated allowed browser origins. Defaults to `*`. |
+| `BASE_DOMAIN` | Yes for Compose | Base domain used by Caddy. `sprintpoints` and `admin` subdomains are created from it. |
+| `POSTGRES_DB` | Yes for Compose | PostgreSQL database name. |
+| `POSTGRES_USER` | Yes for Compose | PostgreSQL username. |
+| `POSTGRES_PASSWORD` | Yes for Compose | PostgreSQL password. |
+| `PGADMIN_DEFAULT_EMAIL` | Yes for Compose | pgAdmin login email. |
+| `PGADMIN_DEFAULT_PASSWORD` | Yes for Compose | pgAdmin login password. |
 
-The anon key is safe to expose in the browser when Row Level Security policies are configured correctly. This project includes permissive policies for invite-link rooms.
+## Backend
+
+The backend is split into settings, database setup, SQLAlchemy models, request schemas, service helpers, and routers.
+
+Main tables:
+
+- `rooms`: room metadata, card set, reveal state, active story, host token
+- `participants`: room members, spectator flag, heartbeat timestamp, participant token
+- `issues`: story queue, descriptions, links, order, final estimates, archive timestamps
+- `votes`: one vote per participant per story
+
+## Security Model
+
+Room codes are invite links. Joining by code creates a participant token.
+
+Room state and all room-scoped mutations require a token that belongs to that same room:
+
+- A participant token can load that room, update that participant, heartbeat, and vote as that participant.
+- A host token can load that room as host and run facilitator actions such as reveal, reset, story management, estimates, and participant removal.
+- A participant token from one room cannot read issues from another room.
+- Tokens are not exposed to other participants in room state.
+
+This is an anonymous invite-link model, not account-based workspace authentication.
 
 ## Development Commands
+
+```bash
+uv run uvicorn backend.app.main:app --reload
+```
+
+Runs the FastAPI backend from the project root.
+
+```bash
+uv run pytest
+```
+
+Runs backend tests.
 
 ```bash
 npm run dev
 ```
 
-Runs the local development server.
+Runs the local frontend development server.
 
 ```bash
 npm run build
@@ -128,111 +186,36 @@ Type-checks and builds the production frontend into `dist`.
 npm run preview
 ```
 
-Serves the production build locally.
-
-## Deploy to GitHub Pages
-
-The repository includes:
-
-```text
-.github/workflows/deploy-pages.yml
-```
-
-It builds the Vite frontend and publishes `dist` to GitHub Pages on every push to `main`.
-
-In GitHub:
-
-1. Open repository **Settings**.
-2. Go to **Pages**.
-3. Set **Source** to **GitHub Actions**.
-4. Add repository secrets or repository variables:
-
-```bash
-VITE_SUPABASE_URL=https://your-project-ref.supabase.co
-VITE_SUPABASE_ANON_KEY=your-public-anon-key
-```
-
-The workflow validates both values before building so a misconfigured Pages deploy fails early.
-
-For standard GitHub project pages, the app automatically uses `/<repository-name>/` as the Vite base path. For a custom domain, add a repository variable:
-
-```bash
-VITE_BASE_PATH=/
-```
-
-Then push to `main`.
-
-## Security Model
-
-This project is optimized for fast, anonymous room-based collaboration. The included Row Level Security policies allow public anonymous clients to read and write room data.
-
-That is acceptable for lightweight planning rooms, but it is not a strict authorization model. For a hardened production SaaS version, move facilitator-only actions to Supabase Edge Functions or introduce authenticated users with ownership-aware RLS policies.
-
-Recommended hardening path:
-
-- Require authenticated users for room creation.
-- Store facilitator ownership in the database.
-- Restrict reveal, reset, story creation, and estimate updates to the room owner.
-- Add rate limiting around room creation and voting.
-- Add retention jobs to delete inactive rooms.
-
-## Product Roadmap
-
-- Custom card decks per room
-- Import stories from GitHub issues
-- Timer for voting rounds
-- Room history across planning sessions
-- Facilitator handoff
-- Optional authenticated workspaces
+Serves the production frontend build locally.
 
 ## Project Structure
 
 ```text
 .
-├── .github/workflows/deploy-pages.yml
-├── public/.nojekyll
+├── docker-compose.yml
+├── backend/
+│   ├── Dockerfile
+│   ├── app/
+│   │   ├── database.py
+│   │   ├── main.py
+│   │   ├── models.py
+│   │   ├── routers/
+│   │   ├── schemas.py
+│   │   ├── services.py
+│   │   └── settings.py
+│   └── tests/
+│       └── test_security.py
 ├── src/
 │   ├── app/
-│   │   ├── App.tsx
-│   │   └── index.ts
-│   ├── entities/room/model/
-│   │   ├── roomApi.ts
-│   │   ├── types.ts
-│   │   └── voteStats.ts
+│   ├── entities/
 │   ├── features/
-│   │   ├── copy-invite/model/useCopyInviteLink.ts
-│   │   ├── create-room/model/createRoom.ts
-│   │   ├── join-room/model/joinRoom.ts
-│   │   ├── manage-issues/model/
-│   │   │   ├── issues.ts
-│   │   │   └── jiraCsv.ts
-│   │   ├── room-session/model/useRoomSession.ts
-│   │   └── vote/model/voting.ts
 │   ├── pages/
-│   │   ├── lobby/ui/LobbyPage.tsx
-│   │   ├── room/ui/RoomPage.tsx
-│   │   └── setup-required/ui/SetupRequiredPage.tsx
 │   ├── shared/
-│   │   ├── api/supabase.ts
-│   │   ├── config/cards.ts
-│   │   ├── i18n/
-│   │   └── lib/
-│   ├── widgets/
-│   │   ├── invite-card/ui/InviteCard.tsx
-│   │   ├── room-sidebar/ui/
-│   │   └── voting-table/ui/VotingTable.tsx
-│   ├── main.tsx
-│   └── types.ts
-├── supabase/
-│   ├── config.toml
-│   └── migrations/
-│       ├── 20260610160000_init_planning_poker.sql
-│       ├── 20260610190000_add_issue_details.sql
-│       ├── 20260617133000_allow_issue_delete.sql
-│       └── 20260617150000_add_issue_archive.sql
+│   └── widgets/
 ├── .env.example
-├── vite.config.ts
-└── package.json
+├── package.json
+├── pyproject.toml
+└── vite.config.ts
 ```
 
 ## License

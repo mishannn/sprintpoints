@@ -34,6 +34,7 @@ export function AddIssueModal({ issue: editingIssue, isOpen, isSaving, onClose, 
   const { t } = useI18n();
   const [issue, setIssue] = useState<IssueDetailsInput>(emptyIssue);
   const isEditing = Boolean(editingIssue);
+  const editingIssueId = editingIssue?.id ?? null;
 
   useEffect(() => {
     if (!isOpen) {
@@ -41,7 +42,7 @@ export function AddIssueModal({ issue: editingIssue, isOpen, isSaving, onClose, 
     }
 
     setIssue(getInitialIssue(editingIssue));
-  }, [editingIssue, isOpen, onClose]);
+  }, [editingIssueId, isOpen]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

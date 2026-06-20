@@ -1,34 +1,26 @@
-import { supabase } from "../../../shared/api/supabase";
-import { AppError } from "../../../shared/lib/AppError";
+import { apiRequest } from "../../../shared/api/client";
 
 export async function deleteParticipant(roomId: string, participantId: string, hostToken: string) {
-  if (!supabase) {
-    throw new AppError("supabaseMissing");
-  }
-
-  const { error } = await supabase.rpc("delete_participant_as_host", {
-    p_room_id: roomId,
-    p_participant_id: participantId,
-    p_host_token: hostToken,
+  await apiRequest<void>(`/rooms/${encodeURIComponent(roomId)}/participants/${encodeURIComponent(participantId)}`, {
+    errorCode: "deleteParticipant",
+    hostToken,
+    method: "DELETE",
   });
-
-  if (error) {
-    throw new AppError("deleteParticipant", { cause: error });
-  }
 }
 
 export async function updateParticipantSpectatorMode(participantId: string, token: string, isSpectator: boolean) {
-  if (!supabase) {
-    throw new AppError("supabaseMissing");
-  }
+  await apiRequest<void>(`/participants/${encodeURIComponent(participantId)}`, {
+    body: { isSpectator },
+    errorCode: "updateParticipantMode",
+    method: "PATCH",
+    participantToken: token,
+  });
+}
 
-  const { error } = await supabase
-    .from("participants")
-    .update({ is_spectator: isSpectator })
-    .eq("id", participantId)
-    .eq("token", token);
-
-  if (error) {
-    throw new AppError("updateParticipantMode", { cause: error });
-  }
+export async function sendParticipantHeartbeat(participantId: string, token: string) {
+  await apiRequest<void>(`/participants/${encodeURIComponent(participantId)}/heartbeat`, {
+    errorCode: "updateParticipantMode",
+    method: "POST",
+    participantToken: token,
+  });
 }

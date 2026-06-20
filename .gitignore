@@ -1,5 +1,14 @@
 node_modules
 dist
 .env
+.env.*
+!.env.example
 .DS_Store
-.supabase
+.venv
+.mypy_cache
+.pytest_cache
+__pycache__
+*.sqlite3
+*.sqlite
+*.db
+docker/pgadmin/pgpass

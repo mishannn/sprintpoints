@@ -1,7 +1,7 @@
 {
   "name": "planningpoker",
   "version": "1.0.0",
-  "description": "Realtime planning poker app backed by Supabase.",
+  "description": "Realtime planning poker app backed by FastAPI.",
   "private": true,
   "scripts": {
     "dev": "vite --host 0.0.0.0",
@@ -10,7 +10,7 @@
   },
   "keywords": [
     "planning-poker",
-    "supabase",
+    "fastapi",
     "react"
   ],
   "author": "",
@@ -19,7 +19,6 @@
   "dependencies": {
     "@mantine/core": "^9.3.2",
     "@mantine/hooks": "^9.3.2",
-    "@supabase/supabase-js": "^2.108.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
@@ -31,7 +30,6 @@
   },
   "devDependencies": {
     "@emnapi/core": "1.11.1",
-    "@emnapi/runtime": "1.11.1",
-    "supabase": "^2.105.0"
+    "@emnapi/runtime": "1.11.1"
   }
 }
