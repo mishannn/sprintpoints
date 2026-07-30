@@ -52,3 +52,7 @@ class VoteRequest(BaseModel):
 
 class ParticipantModeRequest(BaseModel):
     is_spectator: bool = Field(alias="isSpectator")
+
+
+class TransferOwnershipRequest(BaseModel):
+    participant_id: str = Field(alias="participantId")

@@ -15,6 +15,7 @@ export type Database = {
           code: string;
           name: string;
           host_token: string;
+          owner_id: string | null;
           card_set: string[];
           revealed: boolean;
           active_issue_id: string | null;
@@ -26,6 +27,7 @@ export type Database = {
           code?: string;
           name: string;
           host_token: string;
+          owner_id?: string | null;
           card_set?: string[];
           revealed?: boolean;
           active_issue_id?: string | null;
@@ -37,6 +39,7 @@ export type Database = {
           code?: string;
           name?: string;
           host_token?: string;
+          owner_id?: string | null;
           card_set?: string[];
           revealed?: boolean;
           active_issue_id?: string | null;
