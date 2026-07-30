@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -12,6 +13,12 @@ from .settings import get_settings
 
 class Base(DeclarativeBase):
     pass
+
+
+ALEMBIC_DIR = Path(__file__).resolve().parent.parent / "alembic"
+# The oldest revision, representing the schema that existed before Alembic
+# was introduced. Pre-Alembic databases are stamped here on first run.
+BASELINE_REVISION = "0001_initial_schema"
 
 
 engine: Engine | None = None
@@ -51,6 +58,35 @@ def init_db() -> None:
     from . import models  # noqa: F401
 
     Base.metadata.create_all(bind=get_engine())
+
+
+def _alembic_config():
+    from alembic.config import Config
+
+    config = Config()
+    config.set_main_option("script_location", str(ALEMBIC_DIR))
+    # We build the Config in code (no .ini file), so skip fileConfig logging setup.
+    config.attributes["configure_logger"] = False
+    return config
+
+
+def run_migrations() -> None:
+    """Bring the database schema up to date, applying any pending migrations.
+
+    Safe to run on every startup. Databases created before Alembic existed
+    already hold the baseline schema but lack an alembic_version table, so
+    they are stamped to the baseline first; only newer revisions then run.
+    """
+    from alembic import command
+
+    engine = get_engine()
+    with engine.connect() as connection:
+        tables = set(inspect(connection).get_table_names())
+
+    config = _alembic_config()
+    if "alembic_version" not in tables and "rooms" in tables:
+        command.stamp(config, BASELINE_REVISION)
+    command.upgrade(config, "head")
 
 
 def get_db() -> Iterator[Session]:

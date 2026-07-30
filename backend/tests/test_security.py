@@ -4,14 +4,14 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from backend.app.database import init_db
+from backend.app.database import run_migrations
 from backend.app.main import create_app
 
 
 def make_client(tmp_path: Path) -> TestClient:
     db_path = tmp_path / "test.sqlite3"
     app = create_app(database_url=f"sqlite+pysqlite:///{db_path}")
-    init_db()
+    run_migrations()
     return TestClient(app)
 
 

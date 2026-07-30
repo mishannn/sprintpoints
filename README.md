@@ -58,7 +58,7 @@ Health check:
 curl https://sprintpoints.<your-domain>/api/health
 ```
 
-The backend creates its database tables on startup. There are no copied legacy migrations.
+The backend runs Alembic migrations automatically on startup (`alembic upgrade head`), so `docker compose up -d --build` is enough to apply schema changes — no manual migration step. Databases created before Alembic was introduced are detected and stamped to the baseline revision on first run, so existing data is preserved.
 
 ## Database Admin UI
 
@@ -169,6 +169,14 @@ uv run pytest
 ```
 
 Runs backend tests.
+
+```bash
+uv run alembic revision --autogenerate -m "describe change"
+```
+
+Generates a new migration after changing the SQLAlchemy models. Review the
+generated file in `backend/alembic/versions/`, then it will be applied
+automatically on the next backend startup (or run `uv run alembic upgrade head`).
 
 ```bash
 npm run dev
