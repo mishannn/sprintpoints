@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import Vote
+from ..realtime import RoomNotify, room_notifier
 from ..schemas import ParticipantModeRequest
 from ..services import (
     assert_host,
@@ -39,6 +40,7 @@ def update_participant(
     payload: ParticipantModeRequest,
     db: Session = Depends(get_db),
     x_participant_token: str | None = Header(default=None),
+    notify: RoomNotify = Depends(room_notifier),
 ) -> dict[str, Any]:
     participant = assert_participant_token(db, participant_id, x_participant_token)
     participant.is_spectator = payload.is_spectator
@@ -47,6 +49,7 @@ def update_participant(
         if active_issue_id:
             db.execute(delete(Vote).where(Vote.issue_id == active_issue_id, Vote.participant_id == participant_id))
     db.flush()
+    notify(participant.room_id)
     return serialize_participant(get_participant(db, participant_id), x_participant_token)
 
 
@@ -56,10 +59,12 @@ def delete_participant(
     participant_id: str,
     db: Session = Depends(get_db),
     x_host_token: str | None = Header(default=None),
+    notify: RoomNotify = Depends(room_notifier),
 ) -> Response:
     assert_host(db, room_id, x_host_token)
     participant = get_participant(db, participant_id)
     if participant.room_id != room_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "participantNotFound")
     db.delete(participant)
+    notify(room_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

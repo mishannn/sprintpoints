@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import Issue
+from ..realtime import RoomNotify, room_notifier
 from ..schemas import (
     ActiveIssueRequest,
     EstimateRequest,
@@ -35,6 +36,7 @@ def create_issue(
     payload: IssueDetailsRequest,
     db: Session = Depends(get_db),
     x_host_token: str | None = Header(default=None),
+    notify: RoomNotify = Depends(room_notifier),
 ) -> dict[str, Any] | None:
     assert_host(db, room_id, x_host_token)
     title = payload.title.strip()
@@ -58,6 +60,7 @@ def create_issue(
     room.revealed = False
     room.updated_at = timestamp
     db.flush()
+    notify(room_id)
     return serialize_issue(get_issue(db, issue.id))
 
 
@@ -67,6 +70,7 @@ def import_issues(
     payload: ImportIssuesRequest,
     db: Session = Depends(get_db),
     x_host_token: str | None = Header(default=None),
+    notify: RoomNotify = Depends(room_notifier),
 ) -> list[dict[str, Any]]:
     room = get_room(db, room_id)
     assert_host(db, room_id, x_host_token)
@@ -98,6 +102,8 @@ def import_issues(
         room.updated_at = timestamp
 
     db.flush()
+    if created_issues:
+        notify(room_id)
     return [serialize_issue(issue) for issue in sorted(created_issues, key=lambda item: item.position)]
 
 
@@ -107,6 +113,7 @@ def update_issue(
     payload: IssueDetailsRequest,
     db: Session = Depends(get_db),
     x_host_token: str | None = Header(default=None),
+    notify: RoomNotify = Depends(room_notifier),
 ) -> dict[str, Any]:
     issue = get_issue(db, issue_id)
     assert_host(db, issue.room_id, x_host_token)
@@ -117,6 +124,7 @@ def update_issue(
     issue.description = payload.description.strip()
     issue.link = payload.link.strip()
     db.flush()
+    notify(issue.room_id)
     return serialize_issue(issue)
 
 
@@ -127,6 +135,7 @@ def delete_issue(
     next_active_issue_id: str | None = None,
     db: Session = Depends(get_db),
     x_host_token: str | None = Header(default=None),
+    notify: RoomNotify = Depends(room_notifier),
 ) -> Response:
     assert_host(db, room_id, x_host_token)
     issue = get_issue(db, issue_id)
@@ -138,6 +147,7 @@ def delete_issue(
         room.active_issue_id = next_active_issue_id or None
         room.revealed = False
         room.updated_at = now()
+    notify(room_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -148,6 +158,7 @@ def archive_issue(
     payload: NextActiveIssueRequest,
     db: Session = Depends(get_db),
     x_host_token: str | None = Header(default=None),
+    notify: RoomNotify = Depends(room_notifier),
 ) -> dict[str, Any]:
     assert_host(db, room_id, x_host_token)
     issue = get_issue(db, issue_id)
@@ -161,6 +172,7 @@ def archive_issue(
         room.revealed = False
         room.updated_at = timestamp
     db.flush()
+    notify(room_id)
     return serialize_issue(issue)
 
 
@@ -170,6 +182,7 @@ def archive_estimated_issues(
     payload: NextActiveIssueRequest,
     db: Session = Depends(get_db),
     x_host_token: str | None = Header(default=None),
+    notify: RoomNotify = Depends(room_notifier),
 ) -> list[dict[str, Any]]:
     assert_host(db, room_id, x_host_token)
     room = get_room(db, room_id)
@@ -193,6 +206,8 @@ def archive_estimated_issues(
         room.updated_at = timestamp
 
     db.flush()
+    if issues:
+        notify(room_id)
     return [serialize_issue(issue) for issue in sorted(issues, key=lambda item: item.position)]
 
 
@@ -202,6 +217,7 @@ def unarchive_issue(
     issue_id: str,
     db: Session = Depends(get_db),
     x_host_token: str | None = Header(default=None),
+    notify: RoomNotify = Depends(room_notifier),
 ) -> dict[str, Any]:
     assert_host(db, room_id, x_host_token)
     issue = get_issue(db, issue_id)
@@ -209,6 +225,7 @@ def unarchive_issue(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "storyNotFound")
     issue.archived_at = None
     db.flush()
+    notify(room_id)
     return serialize_issue(issue)
 
 
@@ -218,6 +235,7 @@ def activate_issue(
     payload: ActiveIssueRequest,
     db: Session = Depends(get_db),
     x_host_token: str | None = Header(default=None),
+    notify: RoomNotify = Depends(room_notifier),
 ) -> Response:
     assert_host(db, room_id, x_host_token)
     if payload.issue_id is not None:
@@ -228,6 +246,7 @@ def activate_issue(
     room.active_issue_id = payload.issue_id
     room.revealed = False
     room.updated_at = now()
+    notify(room_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -237,8 +256,10 @@ def save_estimate(
     payload: EstimateRequest,
     db: Session = Depends(get_db),
     x_host_token: str | None = Header(default=None),
+    notify: RoomNotify = Depends(room_notifier),
 ) -> Response:
     issue = get_issue(db, issue_id)
     assert_host(db, issue.room_id, x_host_token)
     issue.estimate = payload.value
+    notify(issue.room_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

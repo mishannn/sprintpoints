@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, WebSocket, WebSocketDisconnect, status
 from sqlalchemy.orm import Session
 
-from ..database import get_db
+from ..database import db_session, get_db
 from ..models import Issue, Participant, Room
+from ..realtime import RoomNotify, room_notifier, rooms as room_connections
 from ..schemas import CreateRoomRequest, JoinRoomRequest, TransferOwnershipRequest
 from ..services import (
     DEFAULT_CARDS,
@@ -86,7 +87,12 @@ def create_room(payload: CreateRoomRequest, db: Session = Depends(get_db)) -> di
 
 
 @router.post("/{code}/join", status_code=status.HTTP_201_CREATED)
-def join_room(code: str, payload: JoinRoomRequest, db: Session = Depends(get_db)) -> dict[str, Any]:
+def join_room(
+    code: str,
+    payload: JoinRoomRequest,
+    db: Session = Depends(get_db),
+    notify: RoomNotify = Depends(room_notifier),
+) -> dict[str, Any]:
     if not normalize_code(code) or not payload.name.strip():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "joinRoomRequired")
 
@@ -105,6 +111,7 @@ def join_room(code: str, payload: JoinRoomRequest, db: Session = Depends(get_db)
     db.add(participant)
     db.flush()
     participant = get_participant(db, participant.id)
+    notify(room.id)
     return {
         "room": serialize_room(room),
         "participant": serialize_participant(participant, participant_token),
@@ -130,6 +137,7 @@ def transfer_ownership(
     payload: TransferOwnershipRequest,
     db: Session = Depends(get_db),
     x_host_token: str | None = Header(default=None),
+    notify: RoomNotify = Depends(room_notifier),
 ) -> Response:
     assert_host(db, room_id, x_host_token)
     participant = get_participant(db, payload.participant_id)
@@ -140,4 +148,33 @@ def transfer_ownership(
     room.host_token = new_token()
     room.owner_id = participant.id
     room.updated_at = now()
+    notify(room_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.websocket("/{room_id}/ws")
+async def room_events(
+    websocket: WebSocket,
+    room_id: str,
+    participant_token: str | None = Query(default=None, alias="participantToken"),
+    host_token: str | None = Query(default=None, alias="hostToken"),
+) -> None:
+    await websocket.accept()
+
+    with db_session() as db:
+        try:
+            assert_member(db, room_id, participant_token, host_token)
+        except HTTPException:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+
+    await room_connections.add(room_id, websocket)
+    try:
+        while True:
+            # The client never needs to send anything; this keeps the socket
+            # open and surfaces disconnects.
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        pass
+    finally:
+        await room_connections.remove(room_id, websocket)

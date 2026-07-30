@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 from sqlalchemy import create_engine, inspect
@@ -89,7 +90,8 @@ def run_migrations() -> None:
     command.upgrade(config, "head")
 
 
-def get_db() -> Iterator[Session]:
+@contextmanager
+def db_session() -> Iterator[Session]:
     if SessionLocal is None:
         configure_database()
 
@@ -103,3 +105,8 @@ def get_db() -> Iterator[Session]:
         raise
     finally:
         db.close()
+
+
+def get_db() -> Iterator[Session]:
+    with db_session() as db:
+        yield db

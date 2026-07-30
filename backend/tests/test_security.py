@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
 from backend.app.database import run_migrations
 from backend.app.main import create_app
@@ -134,3 +136,39 @@ def test_transfer_ownership_requires_host(tmp_path: Path) -> None:
         json={"participantId": member_id},
     )
     assert denied.status_code == 403
+
+
+def test_websocket_pushes_room_updates(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    room = create_room(client, "Planning")
+    code = room["state"]["room"]["code"]
+    room_id = room["state"]["room"]["id"]
+
+    with client.websocket_connect(f"/api/rooms/{room_id}/ws?participantToken={room['participantToken']}") as ws:
+        created = client.post(
+            f"/api/rooms/{room_id}/issues",
+            headers={"X-Host-Token": room["hostToken"]},
+            json={"title": "Pushed", "description": "", "link": ""},
+        )
+        assert created.status_code == 201
+
+        message = ws.receive_json()
+        assert message == {"type": "room_updated"}
+
+        # The broadcast fires only after the transaction commits, so the new
+        # issue is already readable when a subscriber re-fetches.
+        state = client.get(f"/api/rooms/{code}", headers={"X-Participant-Token": room["participantToken"]})
+        assert any(issue["title"] == "Pushed" for issue in state.json()["issues"])
+
+
+def test_websocket_rejects_non_member(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    other = create_room(client, "Other")
+    room = create_room(client, "Planning")
+    room_id = room["state"]["room"]["id"]
+
+    with client.websocket_connect(
+        f"/api/rooms/{room_id}/ws?participantToken={other['participantToken']}"
+    ) as ws:
+        with pytest.raises(WebSocketDisconnect):
+            ws.receive_json()

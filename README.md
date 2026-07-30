@@ -1,6 +1,6 @@
 # Sprint Points
 
-Sprint Points is a realtime-style planning poker app for agile teams. Create a room, invite teammates with a link, vote privately, reveal estimates together, and keep the story queue visible during refinement or sprint planning.
+Sprint Points is a realtime planning poker app for agile teams. Create a room, invite teammates with a link, vote privately, reveal estimates together, and keep the story queue visible during refinement or sprint planning. Room changes are pushed to every participant over a WebSocket connection.
 
 The app now uses a React/Vite frontend and a FastAPI backend backed by PostgreSQL in Docker Compose.
 
@@ -149,7 +149,7 @@ Room codes are invite links. Joining by code creates a participant token.
 
 Room state and all room-scoped mutations require a token that belongs to that same room:
 
-- A participant token can load that room, update that participant, heartbeat, and vote as that participant.
+- A participant token can load that room, update that participant, heartbeat, vote as that participant, and subscribe to that room's WebSocket update stream (`/api/rooms/{room_id}/ws`, token passed as a query parameter).
 - A host token can load that room as host and run facilitator actions such as reveal, reset, story management, estimates, and participant removal.
 - A participant token from one room cannot read issues from another room.
 - Tokens are not exposed to other participants in room state.

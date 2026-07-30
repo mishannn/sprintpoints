@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import Vote
+from ..realtime import RoomNotify, room_notifier
 from ..schemas import VoteRequest
 from ..services import (
     assert_host,
@@ -28,6 +29,7 @@ def submit_vote(
     payload: VoteRequest,
     db: Session = Depends(get_db),
     x_participant_token: str | None = Header(default=None),
+    notify: RoomNotify = Depends(room_notifier),
 ) -> Response:
     participant = assert_participant_token(db, participant_id, x_participant_token)
     issue = get_issue(db, issue_id)
@@ -53,6 +55,7 @@ def submit_vote(
         vote.value = payload.value
         vote.updated_at = timestamp
 
+    notify(room_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -61,11 +64,13 @@ def reveal_votes(
     room_id: str,
     db: Session = Depends(get_db),
     x_host_token: str | None = Header(default=None),
+    notify: RoomNotify = Depends(room_notifier),
 ) -> Response:
     assert_host(db, room_id, x_host_token)
     room = get_room(db, room_id)
     room.revealed = True
     room.updated_at = now()
+    notify(room_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -75,6 +80,7 @@ def reset_votes(
     issue_id: str,
     db: Session = Depends(get_db),
     x_host_token: str | None = Header(default=None),
+    notify: RoomNotify = Depends(room_notifier),
 ) -> Response:
     assert_host(db, room_id, x_host_token)
     issue = get_issue(db, issue_id)
@@ -84,6 +90,7 @@ def reset_votes(
     room = get_room(db, room_id)
     room.revealed = False
     room.updated_at = now()
+    notify(room_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -93,10 +100,12 @@ def delete_participant_vote(
     participant_id: str,
     db: Session = Depends(get_db),
     x_participant_token: str | None = Header(default=None),
+    notify: RoomNotify = Depends(room_notifier),
 ) -> Response:
     participant = assert_participant_token(db, participant_id, x_participant_token)
     issue = get_issue(db, issue_id)
     if participant.room_id != issue.room_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "roomNotFound")
     db.execute(delete(Vote).where(Vote.issue_id == issue_id, Vote.participant_id == participant_id))
+    notify(participant.room_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

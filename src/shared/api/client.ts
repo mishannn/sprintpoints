@@ -13,6 +13,27 @@ type RequestOptions = {
   participantToken?: string | null;
 };
 
+type RoomEventsAuth = {
+  participantToken?: string | null;
+  hostToken?: string | null;
+};
+
+export function roomEventsUrl(roomId: string, auth: RoomEventsAuth): string {
+  const base = /^https?:\/\//i.test(apiBaseUrl)
+    ? apiBaseUrl.replace(/^http/i, "ws")
+    : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}${apiBaseUrl}`;
+
+  const params = new URLSearchParams();
+  if (auth.participantToken) {
+    params.set("participantToken", auth.participantToken);
+  }
+  if (auth.hostToken) {
+    params.set("hostToken", auth.hostToken);
+  }
+  const query = params.toString();
+  return `${base}/rooms/${encodeURIComponent(roomId)}/ws${query ? `?${query}` : ""}`;
+}
+
 export async function apiRequest<T>(path: string, options: RequestOptions): Promise<T> {
   const headers = new Headers();
 

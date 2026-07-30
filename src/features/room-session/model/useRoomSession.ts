@@ -22,6 +22,7 @@ import {
 } from "../../manage-issues/model/issues";
 import { deleteParticipantIssueVote, resetIssueVoting, revealRoomVotes, submitVote } from "../../vote/model/voting";
 import { loadRoomState } from "../../../entities/room/model/roomApi";
+import { roomEventsUrl } from "../../../shared/api/client";
 import type { Issue, Notice, Participant, RoomState } from "../../../entities/room/model/types";
 import { distribution, voteSummary } from "../../../entities/room/model/voteStats";
 import { translateError, useI18n } from "../../../shared/i18n";
@@ -192,19 +193,59 @@ export function useRoomSession() {
       .finally(() => setLoading(false));
   }, [loadRoom, showError, t]);
 
+  // Keep the latest refresh function in a ref so the socket effect below does
+  // not reconnect on every state change.
+  const refreshRoomRef = useRef(refreshRoomState);
   useEffect(() => {
-    if (!state) {
+    refreshRoomRef.current = refreshRoomState;
+  }, [refreshRoomState]);
+
+  const roomId = state?.room.id ?? null;
+  const participantToken = currentParticipant?.token ?? null;
+
+  useEffect(() => {
+    if (!roomId) {
       return;
     }
 
-    const interval = window.setInterval(() => {
-      void refreshRoomState();
-    }, 2000);
+    let closedByClient = false;
+    let socket: WebSocket | null = null;
+    let reconnectTimer = 0;
+    let refreshTimer = 0;
+
+    const scheduleRefresh = () => {
+      if (refreshTimer) {
+        return;
+      }
+      // Coalesce bursts of events (e.g. several votes) into one refetch.
+      refreshTimer = window.setTimeout(() => {
+        refreshTimer = 0;
+        void refreshRoomRef.current();
+      }, 120);
+    };
+
+    const connect = () => {
+      socket = new WebSocket(roomEventsUrl(roomId, { participantToken, hostToken }));
+      // A fresh connection may have missed events while it was down, so resync.
+      socket.onopen = () => void refreshRoomRef.current();
+      socket.onmessage = scheduleRefresh;
+      socket.onclose = () => {
+        if (closedByClient) {
+          return;
+        }
+        reconnectTimer = window.setTimeout(connect, 1500);
+      };
+    };
+
+    connect();
 
     return () => {
-      window.clearInterval(interval);
+      closedByClient = true;
+      window.clearTimeout(reconnectTimer);
+      window.clearTimeout(refreshTimer);
+      socket?.close();
     };
-  }, [refreshRoomState, state]);
+  }, [roomId, participantToken, hostToken]);
 
   useEffect(() => {
     if (!currentParticipant) {
