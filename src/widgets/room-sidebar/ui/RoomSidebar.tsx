@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ActionIcon, Badge, Box, Button, Center, Group, Loader, Modal, Paper, ScrollArea, Stack, Text, Title, Tooltip, UnstyledButton } from "@mantine/core";
-import { Archive, ArchiveRestore, Download, ExternalLink, Pencil, Plus, Settings, Trash2, Upload, Users } from "lucide-react";
+import { Archive, ArchiveRestore, Crown, Download, ExternalLink, Pencil, Plus, Settings, Trash2, Upload, Users } from "lucide-react";
 import type { Issue, Participant, Vote } from "../../../entities/room/model/types";
 import type { IssueDetailsInput, IssueImportInput } from "../../../features/manage-issues/model/issues";
 import { downloadJiraCsv } from "../../../features/manage-issues/model/jiraCsv";
@@ -16,6 +16,7 @@ type RoomSidebarProps = {
   currentParticipant: Participant;
   isHost: boolean;
   issues: Issue[];
+  ownerId: string | null;
   pendingSync: PendingSync;
   participants: Participant[];
   roomName: string;
@@ -25,6 +26,7 @@ type RoomSidebarProps = {
   onArchiveIssue: (issue: Issue) => Promise<void>;
   onDeleteIssue: (issue: Issue) => Promise<void>;
   onDeleteParticipant: (participant: Participant) => Promise<void>;
+  onTransferOwnership: (participant: Participant) => Promise<void>;
   onEditIssue: (issue: Issue, details: IssueDetailsInput) => Promise<boolean>;
   onImportIssues: (details: IssueImportInput[]) => Promise<boolean>;
   onUnarchiveIssue: (issue: Issue) => Promise<void>;
@@ -41,6 +43,7 @@ export function RoomSidebar({
   currentParticipant,
   isHost,
   issues,
+  ownerId,
   pendingSync,
   participants,
   roomName,
@@ -50,6 +53,7 @@ export function RoomSidebar({
   onArchiveIssue,
   onDeleteIssue,
   onDeleteParticipant,
+  onTransferOwnership,
   onEditIssue,
   onImportIssues,
   onUnarchiveIssue,
@@ -90,6 +94,14 @@ export function RoomSidebar({
     void onDeleteParticipant(participant);
   };
 
+  const handleTransferOwnership = (participant: Participant) => {
+    if (!window.confirm(t("confirm.transferOwnership", { name: participant.name }))) {
+      return;
+    }
+
+    void onTransferOwnership(participant);
+  };
+
   const handleArchiveIssue = (issue: Issue) => {
     void onArchiveIssue(issue);
   };
@@ -122,9 +134,16 @@ export function RoomSidebar({
               <Paper key={participant.id} bg="gray.0" p="sm" radius="md">
                 <Group justify="space-between" gap="sm" wrap="nowrap">
                   <Box miw={0}>
-                    <Text fw={700} truncate>
-                      {participant.name}
-                    </Text>
+                    <Group gap={6} wrap="nowrap">
+                      {participant.id === ownerId ? (
+                        <Tooltip label={t("participant.host")}>
+                          <Crown size={14} aria-label={t("participant.host")} style={{ flex: "0 0 auto", color: "var(--mantine-color-yellow-6)" }} />
+                        </Tooltip>
+                      ) : null}
+                      <Text fw={700} truncate>
+                        {participant.name}
+                      </Text>
+                    </Group>
                     <Text c="dimmed" fz="xs" fw={700} truncate>
                     {participant.is_spectator ? t("participant.spectator") : voted ? t("participant.voted") : t("participant.waiting")}
                     </Text>
@@ -140,23 +159,44 @@ export function RoomSidebar({
                     />
                 ) : null}
                     {isHost && participant.id !== currentParticipant.id ? (
-                      <Tooltip label={t("action.deleteParticipant")}>
-                        <ActionIcon
-                          variant="subtle"
-                          color="red"
-                          type="button"
-                          size="sm"
-                          onClick={() => handleDeleteParticipant(participant)}
-                          aria-label={t("action.deleteParticipant")}
-                          disabled={pendingSync.deleteParticipantId === participant.id}
-                        >
-                          {pendingSync.deleteParticipantId === participant.id ? (
-                            <Loader size="xs" aria-hidden="true" />
-                          ) : (
-                            <Trash2 size={14} aria-hidden="true" />
-                          )}
-                        </ActionIcon>
-                      </Tooltip>
+                      <>
+                        {participant.id !== ownerId ? (
+                          <Tooltip label={t("action.transferOwnership")}>
+                            <ActionIcon
+                              variant="subtle"
+                              color="yellow"
+                              type="button"
+                              size="sm"
+                              onClick={() => handleTransferOwnership(participant)}
+                              aria-label={t("action.transferOwnership")}
+                              disabled={pendingSync.transferOwnershipId === participant.id}
+                            >
+                              {pendingSync.transferOwnershipId === participant.id ? (
+                                <Loader size="xs" aria-hidden="true" />
+                              ) : (
+                                <Crown size={14} aria-hidden="true" />
+                              )}
+                            </ActionIcon>
+                          </Tooltip>
+                        ) : null}
+                        <Tooltip label={t("action.deleteParticipant")}>
+                          <ActionIcon
+                            variant="subtle"
+                            color="red"
+                            type="button"
+                            size="sm"
+                            onClick={() => handleDeleteParticipant(participant)}
+                            aria-label={t("action.deleteParticipant")}
+                            disabled={pendingSync.deleteParticipantId === participant.id}
+                          >
+                            {pendingSync.deleteParticipantId === participant.id ? (
+                              <Loader size="xs" aria-hidden="true" />
+                            ) : (
+                              <Trash2 size={14} aria-hidden="true" />
+                            )}
+                          </ActionIcon>
+                        </Tooltip>
+                      </>
                     ) : null}
                   </Group>
                 </Group>

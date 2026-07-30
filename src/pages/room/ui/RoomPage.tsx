@@ -36,6 +36,7 @@ type RoomPageProps = {
   onArchiveIssue: (issue: Issue) => Promise<void>;
   onDeleteIssue: (issue: Issue) => Promise<void>;
   onDeleteParticipant: (participant: Participant) => Promise<void>;
+  onTransferOwnership: (participant: Participant) => Promise<void>;
   onEditIssue: (issue: Issue, details: IssueDetailsInput) => Promise<boolean>;
   onImportIssues: (details: IssueImportInput[]) => Promise<boolean>;
   onUnarchiveIssue: (issue: Issue) => Promise<void>;
@@ -67,6 +68,7 @@ export function RoomPage({
   onArchiveIssue,
   onDeleteIssue,
   onDeleteParticipant,
+  onTransferOwnership,
   onEditIssue,
   onImportIssues,
   onUnarchiveIssue,
@@ -147,6 +149,7 @@ export function RoomPage({
               currentParticipant={currentParticipant}
               isHost={isHost}
               issues={activeIssues}
+              ownerId={state.room.owner_id}
               pendingSync={pendingSync}
               participants={state.participants}
               roomName={state.room.name}
@@ -156,6 +159,7 @@ export function RoomPage({
               onArchiveIssue={onArchiveIssue}
               onDeleteIssue={onDeleteIssue}
               onDeleteParticipant={onDeleteParticipant}
+              onTransferOwnership={onTransferOwnership}
               onEditIssue={onEditIssue}
               onImportIssues={onImportIssues}
               onUnarchiveIssue={onUnarchiveIssue}

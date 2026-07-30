@@ -2,17 +2,18 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import Issue, Participant, Room
-from ..schemas import CreateRoomRequest, JoinRoomRequest
+from ..schemas import CreateRoomRequest, JoinRoomRequest, TransferOwnershipRequest
 from ..services import (
     DEFAULT_CARDS,
     build_room_state,
     generate_room_code,
     get_participant,
+    get_room,
     get_room_by_code,
     new_id,
     new_token,
@@ -20,6 +21,7 @@ from ..services import (
     now,
     serialize_participant,
     serialize_room,
+    assert_host,
     assert_member,
 )
 
@@ -44,6 +46,7 @@ def create_room(payload: CreateRoomRequest, db: Session = Depends(get_db)) -> di
         code=room_code,
         name=room_name,
         host_token=host_token,
+        owner_id=participant_id,
         card_set=DEFAULT_CARDS,
         revealed=False,
         active_issue_id=issue_id,
@@ -119,3 +122,22 @@ def load_room(
     room = get_room_by_code(db, code)
     assert_member(db, room.id, x_participant_token, x_host_token)
     return build_room_state(db, room.id, x_participant_token, x_host_token)
+
+
+@router.post("/{room_id}/transfer-ownership", status_code=status.HTTP_204_NO_CONTENT)
+def transfer_ownership(
+    room_id: str,
+    payload: TransferOwnershipRequest,
+    db: Session = Depends(get_db),
+    x_host_token: str | None = Header(default=None),
+) -> Response:
+    assert_host(db, room_id, x_host_token)
+    participant = get_participant(db, payload.participant_id)
+    if participant.room_id != room_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "participantNotFound")
+
+    room = get_room(db, room_id)
+    room.host_token = new_token()
+    room.owner_id = participant.id
+    room.updated_at = now()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

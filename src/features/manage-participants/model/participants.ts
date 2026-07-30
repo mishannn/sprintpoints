@@ -8,6 +8,15 @@ export async function deleteParticipant(roomId: string, participantId: string, h
   });
 }
 
+export async function transferRoomOwnership(roomId: string, participantId: string, hostToken: string) {
+  await apiRequest<void>(`/rooms/${encodeURIComponent(roomId)}/transfer-ownership`, {
+    body: { participantId },
+    errorCode: "transferOwnership",
+    hostToken,
+    method: "POST",
+  });
+}
+
 export async function updateParticipantSpectatorMode(participantId: string, token: string, isSpectator: boolean) {
   await apiRequest<void>(`/participants/${encodeURIComponent(participantId)}`, {
     body: { isSpectator },

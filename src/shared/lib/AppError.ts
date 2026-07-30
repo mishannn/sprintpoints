@@ -23,6 +23,7 @@ export type AppErrorCode =
   | "saveEstimate"
   | "saveVote"
   | "storyTitleRequired"
+  | "transferOwnership"
   | "unarchiveStory"
   | "updateParticipantMode"
   | "updateStory";

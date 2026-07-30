@@ -4,6 +4,7 @@ import { joinPlanningRoom } from "../../join-room/model/joinRoom";
 import {
   deleteParticipant as deleteParticipantRequest,
   sendParticipantHeartbeat,
+  transferRoomOwnership,
   updateParticipantSpectatorMode,
 } from "../../manage-participants/model/participants";
 import {
@@ -39,6 +40,7 @@ export type PendingSync = {
   editIssueId: string | null;
   deleteIssueId: string | null;
   deleteParticipantId: string | null;
+  transferOwnershipId: string | null;
   observerMode: boolean;
   estimate: boolean;
   refreshRoom: boolean;
@@ -56,6 +58,7 @@ const idlePendingSync: PendingSync = {
   editIssueId: null,
   deleteIssueId: null,
   deleteParticipantId: null,
+  transferOwnershipId: null,
   observerMode: false,
   estimate: false,
   refreshRoom: false,
@@ -136,7 +139,14 @@ export function useRoomSession() {
     const existingParticipant =
       roomState.participants.find((participant) => participant.token === savedParticipantToken) ?? null;
     setCurrentParticipant(existingParticipant);
-    setHostToken(savedHostToken);
+
+    // The server reveals the host token to the current owner (which changes when
+    // ownership is transferred), so prefer it over any stored token.
+    const revealedHostToken = roomState.room.host_token || null;
+    if (revealedHostToken && revealedHostToken !== savedHostToken) {
+      localStorage.setItem(hostKey(normalizedCode), revealedHostToken);
+    }
+    setHostToken(revealedHostToken ?? savedHostToken);
 
     return roomState;
   }, []);
@@ -530,6 +540,25 @@ export function useRoomSession() {
     }
   }, [currentParticipant?.id, hostToken, isHost, loadRoom, setPending, showError, state, t]);
 
+  const transferOwnership = useCallback(async (participant: Participant) => {
+    if (!state || !isHost || !hostToken || participant.id === currentParticipant?.id) {
+      return;
+    }
+
+    setNotice(null);
+    setPending({ transferOwnershipId: participant.id });
+
+    try {
+      await transferRoomOwnership(state.room.id, participant.id, hostToken);
+      await loadRoom(state.room.code);
+      setNotice({ kind: "success", message: t("notice.ownershipTransferred") });
+    } catch (error) {
+      showError(error, t("error.transferOwnership"));
+    } finally {
+      setPending({ transferOwnershipId: null });
+    }
+  }, [currentParticipant?.id, hostToken, isHost, loadRoom, setPending, showError, state, t]);
+
   const switchObserverMode = useCallback(async () => {
     if (!state || !currentParticipant) {
       return;
@@ -842,6 +871,7 @@ export function useRoomSession() {
     editIssue,
     deleteIssue,
     deleteParticipant,
+    transferOwnership,
     switchObserverMode,
     archiveEstimatedIssues,
     archiveIssue,

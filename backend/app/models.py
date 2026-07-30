@@ -15,6 +15,7 @@ class Room(Base):
     code: Mapped[str] = mapped_column(String(16), unique=True, index=True, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     host_token: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    owner_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     card_set: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     revealed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     active_issue_id: Mapped[str | None] = mapped_column(String(36), nullable=True)

@@ -41,12 +41,13 @@ def iso(value: datetime | None) -> str | None:
     return value.isoformat().replace("+00:00", "Z")
 
 
-def serialize_room(room: Room, host_token: str | None = None) -> dict[str, Any]:
+def serialize_room(room: Room, reveal_host_token: bool = False) -> dict[str, Any]:
     return {
         "id": room.id,
         "code": room.code,
         "name": room.name,
-        "host_token": room.host_token if host_token and secrets.compare_digest(host_token, room.host_token) else "",
+        "host_token": room.host_token if reveal_host_token else "",
+        "owner_id": room.owner_id,
         "card_set": room.card_set,
         "revealed": room.revealed,
         "active_issue_id": room.active_issue_id,
@@ -143,6 +144,21 @@ def assert_host(db: Session, room_id: str, host_token: str | None) -> None:
     raise HTTPException(status.HTTP_403_FORBIDDEN, "hostAccessDenied")
 
 
+def is_host_caller(
+    room: Room,
+    participants: list[Participant],
+    participant_token: str | None,
+    host_token: str | None,
+) -> bool:
+    if host_token and secrets.compare_digest(host_token, room.host_token):
+        return True
+    if participant_token and room.owner_id:
+        owner = next((participant for participant in participants if participant.id == room.owner_id), None)
+        if owner and secrets.compare_digest(participant_token, owner.token):
+            return True
+    return False
+
+
 def assert_participant_token(db: Session, participant_id: str, token: str | None) -> Participant:
     participant = get_participant(db, participant_id)
     if token and secrets.compare_digest(token, participant.token):
@@ -162,8 +178,9 @@ def build_room_state(
     ).all()
     issues = db.scalars(select(Issue).where(Issue.room_id == room_id).order_by(Issue.position, Issue.created_at)).all()
     votes = db.scalars(select(Vote).where(Vote.room_id == room_id)).all()
+    reveal_host_token = is_host_caller(room, list(participants), participant_token, host_token)
     return {
-        "room": serialize_room(room, host_token),
+        "room": serialize_room(room, reveal_host_token),
         "participants": [serialize_participant(participant, participant_token) for participant in participants],
         "issues": [serialize_issue(issue) for issue in issues],
         "votes": [serialize_vote(vote) for vote in votes],
