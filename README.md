@@ -4,6 +4,16 @@ Sprint Points is a realtime planning poker app for agile teams. Create a room, i
 
 The app now uses a React/Vite frontend and a FastAPI backend backed by PostgreSQL in Docker Compose.
 
+## Screenshots
+
+<img src="screenshots/home.png" width="800" alt="Home page with create and join room forms">
+
+<img src="screenshots/room-voting.png" width="800" alt="Room with voting deck and hidden votes">
+
+<img src="screenshots/room-voted.png" width="800" alt="Room with submitted votes and story estimates">
+
+<img src="screenshots/csv-import.png" width="800" alt="Import stories from a CSV file">
+
 ## Tech Stack
 
 - Frontend: React, TypeScript, Vite
