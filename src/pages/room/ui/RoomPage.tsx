@@ -168,6 +168,7 @@ export function RoomPage({
 
           <Grid.Col span={{ base: 12, md: 8, xl: 6 }}>
             <VotingTable
+              key={`${state.room.id}:${activeIssue?.id}:${currentParticipant.id}:${currentParticipant.is_spectator}:${state.room.revealed}`}
               activeIssue={activeIssue}
               activeVotes={activeVotes}
               currentParticipant={currentParticipant}

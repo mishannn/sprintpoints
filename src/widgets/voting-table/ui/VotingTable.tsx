@@ -1,5 +1,6 @@
 import { Anchor, Badge, Box, Button, Center, Group, Loader, Paper, Progress, ScrollArea, Select, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import { Coffee, ExternalLink, Eye, EyeOff, RefreshCcw } from "lucide-react";
+import { useState } from "react";
 import type { Issue, Participant, Room, Vote } from "../../../entities/room/model/types";
 import { normalizeEstimate } from "../../../features/manage-issues/model/estimate";
 import type { PendingSync } from "../../../features/room-session/model/useRoomSession";
@@ -56,7 +57,9 @@ export function VotingTable({
   const activeDescription = activeIssue?.description ?? "";
   const activeLink = activeIssue?.link ?? "";
   const activeStoryLink = activeLink.trim() ? getExternalHref(activeLink.trim()) : null;
-  const selectedRating = currentVote?.value ?? null;
+  const [previewRating, setPreviewRating] = useState<string | null>(null);
+  const selectedRating = previewRating ?? currentVote?.value ?? null;
+  const votingDisabled = !activeIssue || currentParticipant.is_spectator || pendingSync.observerMode || pendingSync.resetVoting || room.revealed;
   const matchingEstimateIssues = selectedRating
     ? issues.filter(
         (issue) =>
@@ -125,13 +128,14 @@ export function VotingTable({
             <Button
             key={card}
             type="button"
-              variant={currentVote?.value === card ? "light" : "default"}
+              variant={selectedRating === card ? "light" : "default"}
               h={112}
               pos="relative"
-            onClick={() => onCastVote(card)}
-            disabled={!activeIssue || currentParticipant.is_spectator || pendingSync.observerMode || room.revealed}
+            onClick={() => setPreviewRating(card)}
+            disabled={votingDisabled}
               fullWidth
             aria-label={card}
+            aria-pressed={selectedRating === card}
           >
               <Center h="100%">
                 {card === "Coffee" ? (
@@ -146,6 +150,29 @@ export function VotingTable({
             </Button>
         ))}
         </SimpleGrid>
+
+        <Stack gap="xs">
+          <Text c="dimmed" size="sm">
+            {t("voting.previewHint")}
+          </Text>
+          <Group justify="space-between">
+            <Button
+              type="button"
+              onClick={() => {
+                if (selectedRating !== null) onCastVote(selectedRating);
+              }}
+              disabled={votingDisabled || selectedRating === null || selectedRating === currentVote?.value || pendingSync.voteValue !== null}
+              loading={pendingSync.voteValue !== null}
+            >
+              {selectedRating === null ? t("action.confirmVote") : t("action.confirmVoteValue", { value: selectedRating })}
+            </Button>
+            {currentVote && pendingSync.voteValue === null ? (
+              <Text size="sm" fw={700}>
+                {t("voting.confirmedVote", { value: currentVote.value })}
+              </Text>
+            ) : null}
+          </Group>
+        </Stack>
 
         {selectedRating ? (
           <Paper withBorder bg="gray.0" p="md">
