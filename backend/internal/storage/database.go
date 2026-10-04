@@ -47,9 +47,6 @@ func OpenDatabaseInSchema(rawURL, schema string) (*gorm.DB, error) {
 	}
 	if dialect == "sqlite" {
 		sqlDB.SetMaxOpenConns(1)
-		if err = db.Exec("PRAGMA foreign_keys = ON").Error; err == nil {
-			err = db.Exec("PRAGMA busy_timeout = 5000").Error
-		}
 	} else {
 		err = db.Transaction(func(tx *gorm.DB) error {
 			if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext(?)::bigint)", "sprintpoints-schema-"+schema).Error; err != nil {
@@ -105,9 +102,8 @@ func openDialector(raw, schema string) (gorm.Dialector, string, string, error) {
 		}
 		q := u.Query()
 		q.Set("search_path", schema)
-		if q.Get("timezone") == "" {
-			q.Set("timezone", "UTC")
-		}
+		// Shared timestamp columns represent UTC wall time in both databases.
+		q.Set("timezone", "UTC")
 		u.RawQuery = q.Encode()
 		return postgres.Open(u.String()), "postgres", schema, nil
 	}

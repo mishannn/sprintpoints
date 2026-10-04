@@ -6,19 +6,29 @@ import (
 	"github.com/mishannn/sprintpoints/backend/internal/domain"
 )
 
-func roomJSON(r domain.Room, reveal bool) map[string]any {
-	t := ""
-	if reveal {
-		t = r.HostToken
-	}
-	return map[string]any{"id": r.ID, "code": r.Code, "name": r.Name, "host_token": t, "owner_id": r.OwnerID, "card_set": r.CardSet, "revealed": r.Revealed, "active_issue_id": r.ActiveIssueID, "created_at": r.CreatedAt, "updated_at": r.UpdatedAt}
+type roomView struct {
+	domain.Room
+	HostToken string `json:"host_token"`
 }
-func participantJSON(p domain.Participant, t string) map[string]any {
-	visible := ""
-	if tokensEqual(t, p.Token) {
-		visible = p.Token
+
+type participantView struct {
+	domain.Participant
+	Token string `json:"token"`
+}
+
+func roomJSON(r domain.Room, reveal bool) roomView {
+	token := ""
+	if reveal {
+		token = r.HostToken
 	}
-	return map[string]any{"id": p.ID, "room_id": p.RoomID, "name": p.Name, "token": visible, "is_spectator": p.IsSpectator, "last_seen_at": p.LastSeenAt, "created_at": p.CreatedAt}
+	return roomView{Room: r, HostToken: token}
+}
+
+func participantJSON(p domain.Participant, token string) participantView {
+	if !tokensEqual(token, p.Token) {
+		token = ""
+	}
+	return participantView{Participant: p, Token: token}
 }
 
 // A participant sees only their own credential; the owner may also recover
@@ -31,7 +41,7 @@ func roomState(db *gorm.DB, r domain.Room, pt, ht string) map[string]any {
 	must(db.Where("room_id = ?", r.ID).Order("position, created_at").Find(&issues).Error)
 	must(db.Where("room_id = ?", r.ID).Find(&votes).Error)
 	reveal := tokensEqual(ht, r.HostToken)
-	out := make([]map[string]any, 0, len(ps))
+	out := make([]participantView, 0, len(ps))
 	for _, p := range ps {
 		if r.OwnerID != nil && p.ID == *r.OwnerID && tokensEqual(pt, p.Token) {
 			reveal = true

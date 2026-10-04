@@ -1,9 +1,10 @@
 package httpapi
 
 import (
+	"bytes"
 	"embed"
 	"net/http"
-	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,10 +24,7 @@ func (s *Server) docsRoutes() {
 		}
 		handler := func(c *gin.Context) {
 			c.Header("Content-Type", mime)
-			c.Header("Content-Length", strconv.Itoa(len(data)))
-			if c.Request.Method != http.MethodHead {
-				_, _ = c.Writer.Write(data)
-			}
+			http.ServeContent(c.Writer, c.Request, file, time.Time{}, bytes.NewReader(data))
 		}
 		s.router.GET(path, handler)
 		s.router.HEAD(path, handler)

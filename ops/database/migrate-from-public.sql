@@ -1,6 +1,6 @@
 -- Execute once against the legacy PostgreSQL database while the old app is
 -- stopped. This entire DO statement is one transaction. PostgreSQL interprets
--- the legacy Python timestamps as UTC when copying to native timestamptz.
+-- the legacy Python timestamps as UTC when copying to the shared UTC timestamp columns.
 -- Run after Go has created and migrated an empty sprintpoints schema. It
 -- leaves public (including Alembic) and the Goose migration ledger untouched.
 -- Rerunning it refuses nonempty target data tables before copying anything.

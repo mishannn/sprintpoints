@@ -1,11 +1,12 @@
 import { ActionIcon, Alert, Box, Button, Container, Grid, Group, Loader, Stack, Text, Title, Tooltip } from "@mantine/core";
+import { useClipboard } from "@mantine/hooks";
 import { Check, Clipboard, Eye, EyeOff, RefreshCcw } from "lucide-react";
 import type { Issue, Notice, Participant, RoomState, Vote } from "../../../entities/room/model/types";
 import type { IssueDetailsInput, IssueImportInput } from "../../../features/manage-issues/model/issues";
 import type { PendingSync } from "../../../features/room-session/model/useRoomSession";
-import { useCopyInviteLink } from "../../../features/copy-invite/model/useCopyInviteLink";
 import { LanguageSelector } from "../../../shared/i18n/LanguageSelector";
 import { useI18n } from "../../../shared/i18n";
+import { getRoomInviteUrl } from "../../../shared/lib/roomUrl";
 import { InviteCard } from "../../../widgets/invite-card/ui/InviteCard";
 import { RoomSidebar } from "../../../widgets/room-sidebar/ui/RoomSidebar";
 import { VotingTable } from "../../../widgets/voting-table/ui/VotingTable";
@@ -80,11 +81,11 @@ export function RoomPage({
   onSetEstimate,
 }: RoomPageProps) {
   const { t } = useI18n();
-  const { copied, copyInviteLink } = useCopyInviteLink();
-  const noticeColor = notice?.kind === "error" ? "red" : notice?.kind === "success" ? "gray" : "gray";
+  const clipboard = useClipboard({ timeout: 1800 });
+  const noticeColor = notice?.kind === "error" ? "red" : "gray";
 
   const handleCopyInviteLink = () => {
-    void copyInviteLink(state.room.code);
+    clipboard.copy(getRoomInviteUrl(state.room.code));
   };
 
   return (
@@ -120,7 +121,7 @@ export function RoomPage({
             </Button>
             <Tooltip label={t("action.copyInviteLink")}>
               <ActionIcon variant="default" size={36} type="button" onClick={handleCopyInviteLink} aria-label={t("action.copyInviteLink")}>
-                {copied ? <Check size={19} aria-hidden="true" /> : <Clipboard size={19} aria-hidden="true" />}
+                {clipboard.copied ? <Check size={19} aria-hidden="true" /> : <Clipboard size={19} aria-hidden="true" />}
               </ActionIcon>
             </Tooltip>
             <Button
@@ -189,7 +190,7 @@ export function RoomPage({
           </Grid.Col>
 
           <Grid.Col span={{ base: 12, xl: 3 }}>
-            <InviteCard code={state.room.code} copied={copied} onCopyInviteLink={handleCopyInviteLink} />
+            <InviteCard code={state.room.code} copied={clipboard.copied} onCopyInviteLink={handleCopyInviteLink} />
           </Grid.Col>
         </Grid>
       </Container>

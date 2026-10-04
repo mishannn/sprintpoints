@@ -1,4 +1,5 @@
 import type { Issue } from "../../../entities/room/model/types";
+import Papa from "papaparse";
 import type { IssueDetailsInput } from "./issues";
 import { normalizeEstimate } from "./estimate";
 
@@ -81,49 +82,11 @@ export function getInitialJiraImportMapping(headers: string[]): JiraImportMappin
 }
 
 export function parseCsv(text: string): CsvData {
-  const records: string[][] = [];
-  const input = text.replace(/^\uFEFF/, "");
-  let record: string[] = [];
-  let field = "";
-  let inQuotes = false;
-
-  for (let index = 0; index < input.length; index += 1) {
-    const char = input[index];
-    const next = input[index + 1];
-
-    if (inQuotes) {
-      if (char === '"' && next === '"') {
-        field += '"';
-        index += 1;
-      } else if (char === '"') {
-        inQuotes = false;
-      } else {
-        field += char;
-      }
-      continue;
-    }
-
-    if (char === '"') {
-      inQuotes = true;
-    } else if (char === ",") {
-      record.push(field);
-      field = "";
-    } else if (char === "\n") {
-      record.push(field);
-      records.push(record);
-      record = [];
-      field = "";
-    } else if (char !== "\r") {
-      field += char;
-    }
+  const result = Papa.parse<string[]>(text, { delimiter: ",", skipEmptyLines: "greedy" });
+  if (result.errors.length > 0) {
+    throw new Error(result.errors[0].message);
   }
-
-  if (field || record.length > 0) {
-    record.push(field);
-    records.push(record);
-  }
-
-  const [headers = [], ...rows] = records.filter((item) => item.some((cell) => cell.trim()));
+  const [headers = [], ...rows] = result.data;
   return { headers, rows };
 }
 
@@ -140,14 +103,6 @@ export function mapJiraCsvRows(data: CsvData, mapping: JiraImportMapping, linkPa
       estimate: normalizeEstimate(readCell(row, mapping.estimate)),
     }))
     .filter((issue) => issue.title);
-}
-
-function escapeCsvCell(value: string) {
-  if (/[",\r\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-
-  return value;
 }
 
 function getIssueKey(issue: Issue) {
@@ -167,7 +122,7 @@ export function serializeIssuesToJiraCsv(issues: Issue[]) {
     issue.link,
   ]);
 
-  return [jiraExportHeaders, ...rows].map((row) => row.map(escapeCsvCell).join(",")).join("\r\n");
+  return Papa.unparse([jiraExportHeaders, ...rows], { newline: "\r\n" });
 }
 
 export function downloadJiraCsv(issues: Issue[], roomName: string) {

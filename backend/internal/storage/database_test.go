@@ -255,3 +255,23 @@ func withoutSearchPath(raw string) string {
 	u.RawQuery = q.Encode()
 	return u.String()
 }
+
+func TestPostgresURLUsesStandardEscaping(t *testing.T) {
+	t.Setenv("DATABASE_URL", "")
+	t.Setenv("POSTGRES_USER", "user:@/?#%")
+	t.Setenv("POSTGRES_PASSWORD", "password:@/?#% +")
+	t.Setenv("POSTGRES_DB", "room/name #?%")
+	t.Setenv("POSTGRES_HOST", "::1")
+	t.Setenv("POSTGRES_PORT", "5544")
+	connection, err := url.Parse(DatabaseURLFromEnv())
+	if err != nil {
+		t.Fatal(err)
+	}
+	password, _ := connection.User.Password()
+	if connection.User.Username() != os.Getenv("POSTGRES_USER") || password != os.Getenv("POSTGRES_PASSWORD") || connection.Host != "[::1]:5544" || connection.Path != "/"+os.Getenv("POSTGRES_DB") || connection.RawQuery != "" || connection.Fragment != "" {
+		t.Fatalf("connection parts did not round-trip correctly")
+	}
+	if !strings.Contains(connection.EscapedPath(), "%2F") {
+		t.Fatal("database name slash was not escaped")
+	}
+}

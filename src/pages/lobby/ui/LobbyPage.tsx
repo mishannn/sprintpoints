@@ -23,7 +23,7 @@ function GitHubMark({ size = 19 }: { size?: number }) {
 
 export function LobbyPage({ initialRoomCode, loading, notice, onCreateRoom, onJoinRoom }: LobbyPageProps) {
   const { t } = useI18n();
-  const noticeColor = notice?.kind === "error" ? "red" : notice?.kind === "success" ? "gray" : "gray";
+  const noticeColor = notice?.kind === "error" ? "red" : "gray";
 
   async function handleCreateRoom(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

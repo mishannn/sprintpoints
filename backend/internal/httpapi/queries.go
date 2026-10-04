@@ -8,14 +8,17 @@ import (
 	"github.com/mishannn/sprintpoints/backend/internal/domain"
 )
 
-func findRoom(db *gorm.DB, id string) domain.Room {
-	var v domain.Room
+func findByID[T any](db *gorm.DB, id, notFound string) T {
+	var v T
 	err := db.First(&v, "id = ?", id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		fail(404, "roomNotFound")
+		fail(404, notFound)
 	}
 	must(err)
 	return v
+}
+func findRoom(db *gorm.DB, id string) domain.Room {
+	return findByID[domain.Room](db, id, "roomNotFound")
 }
 func findRoomByCode(db *gorm.DB, code string) domain.Room {
 	var v domain.Room
@@ -27,22 +30,10 @@ func findRoomByCode(db *gorm.DB, code string) domain.Room {
 	return v
 }
 func findIssue(db *gorm.DB, id string) domain.Issue {
-	var v domain.Issue
-	err := db.First(&v, "id = ?", id).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		fail(404, "storyNotFound")
-	}
-	must(err)
-	return v
+	return findByID[domain.Issue](db, id, "storyNotFound")
 }
 func findParticipant(db *gorm.DB, id string) domain.Participant {
-	var v domain.Participant
-	err := db.First(&v, "id = ?", id).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		fail(404, "participantNotFound")
-	}
-	must(err)
-	return v
+	return findByID[domain.Participant](db, id, "participantNotFound")
 }
 func nextIssuePosition(db *gorm.DB, id string) int {
 	var n int
