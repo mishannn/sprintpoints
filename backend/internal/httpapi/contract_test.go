@@ -1,4 +1,4 @@
-package poker
+package httpapi
 
 import (
 	"bytes"
@@ -11,6 +11,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/mishannn/sprintpoints/backend/internal/storage"
 )
 
 type legacyHTTPResult struct {
@@ -136,7 +138,7 @@ func TestLegacyHTTPEdgeContract(t *testing.T) {
 
 	// Exercise a missing schema on an isolated SQLite database, independent of
 	// TEST_POSTGRES_URL so the test remains portable to PostgreSQL CI runs.
-	db, err := OpenDatabase(sqliteURL(filepath.Join(t.TempDir(), "http-500.db")))
+	db, err := storage.OpenDatabase(sqliteURL(filepath.Join(t.TempDir(), "http-500.db")))
 	if err != nil {
 		t.Fatal(err)
 	}

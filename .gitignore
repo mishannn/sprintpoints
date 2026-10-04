@@ -4,10 +4,6 @@ dist
 .env.*
 !.env.example
 .DS_Store
-.venv
-.mypy_cache
-.pytest_cache
-__pycache__
 *.sqlite3
 *.sqlite
 *.db
@@ -16,4 +12,3 @@ docker/pgadmin/pgpass
 # Local Go build/test artifacts
 .tmp/
 /server
-pytest-of-root/

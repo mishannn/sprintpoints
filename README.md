@@ -137,7 +137,7 @@ Vite proxies `/api` to `http://127.0.0.1:8000` during development.
 
 ## Backend
 
-The Go backend is organized around the HTTP server and the `backend/internal/poker` application package. Its persistence layer supports SQLite and PostgreSQL.
+The Go backend separates domain entities, HTTP handlers, persistence, request validation, and realtime notifications. See [backend/README.md](backend/README.md) for package responsibilities and request flow. SQLite and PostgreSQL share the same domain models and API contract.
 
 Main tables:
 
@@ -202,7 +202,13 @@ Serves the production frontend build locally.
 ├── backend/
 │   ├── Dockerfile
 │   ├── cmd/server/
-│   └── internal/poker/      # Go implementation and regression tests
+│   ├── README.md           # Architecture and request flow
+│   └── internal/
+│       ├── domain/         # Rooms, participants, issues, votes
+│       ├── httpapi/        # Routes and handlers grouped by feature
+│       ├── storage/        # Database configuration, schema and migrations
+│       ├── validation/     # Request schemas, coercion and JSON errors
+│       └── realtime/       # Room WebSocket subscriptions and broadcasts
 ├── src/
 │   ├── app/
 │   ├── entities/

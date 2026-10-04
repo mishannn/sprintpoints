@@ -1,4 +1,4 @@
-package poker
+package validation
 
 import (
 	"bytes"
@@ -25,8 +25,8 @@ func TestParseBoolAcceptsNumericJSONForms(t *testing.T) {
 	}
 }
 
-func TestPayloadContentTypeAndRawInput(t *testing.T) {
-	fields := []field{str("name")}
+func TestParseContentTypeAndRawInput(t *testing.T) {
+	fields := []Field{String("name")}
 	for _, tc := range []struct {
 		contentType string
 		wantOK      bool
@@ -38,19 +38,18 @@ func TestPayloadContentTypeAndRawInput(t *testing.T) {
 			if tc.contentType != "" {
 				r.Header.Set("Content-Type", tc.contentType)
 			}
+			got, err := Parse(r, fields)
 			if tc.wantOK {
-				if got := payload(r, fields); got["name"] != "x" {
-					t.Errorf("%q: got %#v", tc.contentType, got)
+				if err != nil || got["name"] != "x" {
+					t.Errorf("got %#v, %v", got, err)
 				}
 			} else {
-				defer func() {
-					if e := recover(); e == nil {
-						t.Errorf("%q: expected validation panic", tc.contentType)
-					} else if a, ok := e.(apiError); !ok || a.status != 422 {
-						t.Errorf("%q: unexpected error %#v", tc.contentType, e)
-					}
-				}()
-				payload(r, fields)
+				if err == nil {
+					t.Fatal("expected validation error")
+				}
+				if _, ok := err.(*Error); !ok {
+					t.Fatalf("unexpected error %#v", err)
+				}
 			}
 		})
 	}
@@ -58,7 +57,7 @@ func TestPayloadContentTypeAndRawInput(t *testing.T) {
 
 func TestValidationDoesNotNormalizeErrorInput(t *testing.T) {
 	input := map[string]any{"enabled": json.Number("1e0"), "title": json.Number("4")}
-	_, errs := validate(input, []field{boolean("enabled"), str("title")}, []any{"body"})
+	_, errs := validate(input, []Field{Boolean("enabled"), String("title")}, []any{"body"})
 	if input["enabled"] != json.Number("1e0") {
 		t.Fatalf("input mutated: %#v", input)
 	}

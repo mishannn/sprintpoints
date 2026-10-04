@@ -1,4 +1,4 @@
-package poker
+package httpapi
 
 import (
 	"embed"
@@ -6,8 +6,8 @@ import (
 	"strconv"
 )
 
-// The API description is the compatibility contract exported from the original
-// FastAPI application. Keep it in sync when deliberately changing the API.
+// Embedded documentation describes the public API. Update it together with
+// intentional changes to routes, request schemas, or response fields.
 //
 //go:embed docs/*
 var apiDocs embed.FS
