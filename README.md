@@ -2,7 +2,7 @@
 
 Sprint Points is a realtime planning poker app for agile teams. Create a room, invite teammates with a link, vote privately, reveal estimates together, and keep the story queue visible during refinement or sprint planning. Room changes are pushed to every participant over a WebSocket connection.
 
-The app now uses a React/Vite frontend and a FastAPI backend backed by PostgreSQL in Docker Compose.
+The app uses a React/Vite frontend and a Go backend backed by PostgreSQL in Docker Compose. The backend also supports SQLite for local development and tests.
 
 ## Screenshots
 
@@ -18,15 +18,13 @@ The app now uses a React/Vite frontend and a FastAPI backend backed by PostgreSQ
 
 - Frontend: React, TypeScript, Vite
 - UI: Mantine, lucide-react icons
-- Backend: FastAPI, SQLAlchemy, PostgreSQL
-- Python package manager: uv
+- Backend: Go 1.24, GORM, SQLite/PostgreSQL
 
 ## Requirements
 
 - Node.js 24+
 - npm 11+
-- Python 3.12+
-- uv
+- Go 1.24+ and a C compiler (SQLite uses CGO)
 - Docker and Docker Compose for VPS deployment
 
 ## Production Start On A VPS
@@ -59,7 +57,7 @@ This starts:
 
 - `caddy`: public HTTPS reverse proxy on ports `80` and `443`
 - `db`: PostgreSQL 17 with a persistent Docker volume
-- `backend`: FastAPI behind `https://sprintpoints.<your-domain>`
+- `backend`: Go API behind `https://sprintpoints.<your-domain>`
 - `db-admin`: pgAdmin behind `https://admin.<your-domain>`
 
 Health check:
@@ -68,7 +66,7 @@ Health check:
 curl https://sprintpoints.<your-domain>/api/health
 ```
 
-The backend runs Alembic migrations automatically on startup (`alembic upgrade head`), so `docker compose up -d --build` is enough to apply schema changes — no manual migration step. Databases created before Alembic was introduced are detected and stamped to the baseline revision on first run, so existing data is preserved.
+The Go backend applies its schema migrations on startup, so `docker compose up -d --build` applies the current schema without a manual step. The existing Alembic revision files are retained as historical migration records; the Go schema remains compatible with databases created by the Python backend. Back up production data before deploying a backend migration.
 
 ## Database Admin UI
 
@@ -100,17 +98,11 @@ Install frontend dependencies:
 npm install
 ```
 
-Install backend dependencies:
+Run the Go backend locally (Go modules are resolved from `go.mod`):
 
 ```bash
-uv sync
-```
-
-For local backend development without Docker, provide a database URL and start FastAPI:
-
-```bash
-export DATABASE_URL=sqlite+pysqlite:///./planningpoker.sqlite3
-uv run uvicorn backend.app.main:app --reload
+export DATABASE_URL=sqlite:///./planningpoker.sqlite3
+go run ./backend/cmd/server
 ```
 
 In another terminal, start the frontend:
@@ -133,7 +125,8 @@ Vite proxies `/api` to `http://127.0.0.1:8000` during development.
 | --- | --- | --- |
 | `VITE_API_URL` | No | Frontend API base URL. Defaults to `/api`. |
 | `VITE_BASE_PATH` | No | Override Vite base path, useful for custom domains. |
-| `DATABASE_URL` | No | SQLAlchemy database URL. Compose sets this to PostgreSQL. Local default is SQLite. |
+| `DATABASE_URL` | No | PostgreSQL (`postgres://` / `postgresql://` / legacy `postgresql+psycopg://`) or SQLite (`sqlite:///` / legacy `sqlite+pysqlite:///`) URL. Compose configures PostgreSQL from `POSTGRES_*`. Defaults to `sqlite:///./planningpoker.sqlite3`. |
+| `LISTEN_ADDR` | No | HTTP listen address, default `:8000`. |
 | `PLANNING_POKER_CORS_ORIGINS` | No | Comma-separated allowed browser origins. Defaults to `*`. |
 | `BASE_DOMAIN` | Yes for Compose | Base domain used by Caddy. `sprintpoints` and `admin` subdomains are created from it. |
 | `POSTGRES_DB` | Yes for Compose | PostgreSQL database name. |
@@ -144,7 +137,7 @@ Vite proxies `/api` to `http://127.0.0.1:8000` during development.
 
 ## Backend
 
-The backend is split into settings, database setup, SQLAlchemy models, request schemas, service helpers, and routers.
+The Go backend is organized around the HTTP server and the `backend/internal/poker` application package. Its persistence layer supports SQLite and PostgreSQL.
 
 Main tables:
 
@@ -169,24 +162,27 @@ This is an anonymous invite-link model, not account-based workspace authenticati
 ## Development Commands
 
 ```bash
-uv run uvicorn backend.app.main:app --reload
+go run ./backend/cmd/server
 ```
 
-Runs the FastAPI backend from the project root.
+Runs the Go API locally. The backend uses `DATABASE_URL` when set; otherwise it uses its local SQLite default.
 
 ```bash
-uv run pytest
+go test -race ./...
+go vet ./...
 ```
 
-Runs backend tests.
+Runs Go tests (including PostgreSQL integration tests when `TEST_POSTGRES_URL` is set) and static checks. CI runs these with a PostgreSQL service.
+
+The Python/FastAPI implementation and Alembic revisions remain temporarily for differential reference. To compare the Go and Python implementations over real HTTP and WebSocket connections, including opening a Python-created database in Go:
 
 ```bash
-uv run alembic revision --autogenerate -m "describe change"
+uv sync --frozen
+go build -o .tmp/sprintpoints-server ./backend/cmd/server
+uv run pytest backend/tests -q
 ```
 
-Generates a new migration after changing the SQLAlchemy models. Review the
-generated file in `backend/alembic/versions/`, then it will be applied
-automatically on the next backend startup (or run `uv run alembic upgrade head`).
+Python 3.12+ and uv are needed only for these reference tests, not for the production image. The parity suite skips when the Go binary is absent; CI always builds it first. `/openapi.json`, `/docs`, and `/redoc` retain the original API documentation. WebSocket notifications use an in-process registry, so run one backend instance (as in the existing Compose deployment).
 
 ```bash
 npm run dev
@@ -213,16 +209,11 @@ Serves the production frontend build locally.
 ├── docker-compose.yml
 ├── backend/
 │   ├── Dockerfile
-│   ├── app/
-│   │   ├── database.py
-│   │   ├── main.py
-│   │   ├── models.py
-│   │   ├── routers/
-│   │   ├── schemas.py
-│   │   ├── services.py
-│   │   └── settings.py
-│   └── tests/
-│       └── test_security.py
+│   ├── cmd/server/
+│   ├── internal/poker/
+│   ├── app/                 # Legacy Python reference
+│   ├── alembic/             # Historical Python migrations
+│   └── tests/               # Legacy Python reference tests
 ├── src/
 │   ├── app/
 │   ├── entities/
@@ -232,7 +223,7 @@ Serves the production frontend build locally.
 │   └── widgets/
 ├── .env.example
 ├── package.json
-├── pyproject.toml
+├── go.mod
 └── vite.config.ts
 ```
 
