@@ -12,3 +12,8 @@ __pycache__
 *.sqlite
 *.db
 docker/pgadmin/pgpass
+
+# Local Go build/test artifacts
+.tmp/
+/server
+pytest-of-root/
