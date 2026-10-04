@@ -66,7 +66,7 @@ Health check:
 curl https://sprintpoints.<your-domain>/api/health
 ```
 
-The Go backend applies its schema migrations on startup, so `docker compose up -d --build` applies the current schema without a manual step. The existing Alembic revision files are retained as historical migration records; the Go schema remains compatible with databases created by the Python backend. Back up production data before deploying a backend migration.
+The Go backend applies its schema migrations on startup, so `docker compose up -d --build` applies the current schema without a manual step. Go retains the existing Alembic revision identifiers in the database and remains compatible with databases created by the former Python backend. The historical Python implementation and migration scripts are available in Git history. Back up production data before deploying a backend migration.
 
 ## Database Admin UI
 
@@ -174,15 +174,7 @@ go vet ./...
 
 Runs Go tests (including PostgreSQL integration tests when `TEST_POSTGRES_URL` is set) and static checks. CI runs these with a PostgreSQL service.
 
-The Python/FastAPI implementation and Alembic revisions remain temporarily for differential reference. To compare the Go and Python implementations over real HTTP and WebSocket connections, including opening a Python-created database in Go:
-
-```bash
-uv sync --frozen
-go build -o .tmp/sprintpoints-server ./backend/cmd/server
-uv run pytest backend/tests -q
-```
-
-Python 3.12+ and uv are needed only for these reference tests, not for the production image. The parity suite compares full validation errors and HTTP behavior in addition to application workflows, including content types, numeric boolean coercion, malformed JSON diagnostics, HEAD requests, redirects, and server errors. It skips when the Go binary is absent; CI always builds it first. `/openapi.json`, `/docs`, and `/redoc` retain the original API documentation. WebSocket notifications use an in-process registry, so run one backend instance (as in the existing Compose deployment).
+HTTP contract regression tests use frozen responses captured from the former Python backend, so testing requires no Python installation. Go tests also cover authentication, token privacy, ownership transfer, voting, WebSocket notifications, and legacy database migrations. `/openapi.json`, `/docs`, and `/redoc` retain the original API documentation. WebSocket notifications use an in-process registry, so run one backend instance (as in the existing Compose deployment).
 
 ```bash
 npm run dev
@@ -210,10 +202,7 @@ Serves the production frontend build locally.
 ├── backend/
 │   ├── Dockerfile
 │   ├── cmd/server/
-│   ├── internal/poker/
-│   ├── app/                 # Legacy Python reference
-│   ├── alembic/             # Historical Python migrations
-│   └── tests/               # Legacy Python reference tests
+│   └── internal/poker/      # Go implementation and regression tests
 ├── src/
 │   ├── app/
 │   ├── entities/
