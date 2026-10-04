@@ -1,17 +1,16 @@
 {
   "name": "planningpoker",
   "version": "1.0.0",
-  "description": "Realtime planning poker app backed by Go.",
+  "description": "Realtime planning poker app backed by FastAPI.",
   "private": true,
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc && vite build",
-    "test:frontend-csv": "node --test tests/frontend-csv.test.mjs",
     "preview": "vite preview --host 0.0.0.0"
   },
   "keywords": [
     "planning-poker",
-    "go",
+    "fastapi",
     "react"
   ],
   "author": "",
@@ -24,7 +23,6 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
     "lucide-react": "^1.17.0",
-    "papaparse": "^5.7.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "typescript": "^6.0.3",
@@ -32,7 +30,6 @@
   },
   "devDependencies": {
     "@emnapi/core": "1.11.1",
-    "@emnapi/runtime": "1.11.1",
-    "@types/papaparse": "^5.5.2"
+    "@emnapi/runtime": "1.11.1"
   }
 }

@@ -3,6 +3,7 @@ import { AppError } from "../lib/AppError";
 
 const configuredApiUrl = import.meta.env.VITE_API_URL as string | undefined;
 export const apiBaseUrl = (configuredApiUrl?.replace(/\/$/, "") || "/api");
+export const hasApiConfig = true;
 
 type RequestOptions = {
   body?: unknown;
@@ -62,7 +63,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions): Prom
     } catch {
       // Fall back to status text when the backend returns an empty response.
     }
-    throw new AppError(options.errorCode, message);
+    throw new AppError(options.errorCode, { message });
   }
 
   if (response.status === 204) {
