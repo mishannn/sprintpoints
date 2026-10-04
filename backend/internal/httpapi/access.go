@@ -1,10 +1,10 @@
 package httpapi
 
 import (
-	"github.com/mishannn/sprintpoints/backend/internal/domain"
-
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+
+	"github.com/mishannn/sprintpoints/backend/internal/domain"
 )
 
 // requireHost serializes facilitator mutations on the room row in PostgreSQL.

@@ -17,6 +17,7 @@ import (
 
 func main() {
 	healthcheck := flag.Bool("healthcheck", false, "check the running server and exit")
+	migrateOnly := flag.Bool("migrate", false, "apply schema migrations and exit")
 	flag.Parse()
 	if *healthcheck {
 		client := http.Client{Timeout: 4 * time.Second}
@@ -39,6 +40,10 @@ func main() {
 		log.Fatal(err)
 	}
 	defer sqlDB.Close()
+	if *migrateOnly {
+		log.Print("schema migrations complete")
+		return
+	}
 	origins := []string{}
 	originEnv, ok := os.LookupEnv("PLANNING_POKER_CORS_ORIGINS")
 	if !ok {

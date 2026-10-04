@@ -4,11 +4,10 @@ import (
 	"embed"
 	"net/http"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
 )
 
-// Embedded documentation describes the public API. Update it together with
-// intentional changes to routes, request schemas, or response fields.
-//
 //go:embed docs/*
 var apiDocs embed.FS
 
@@ -22,15 +21,14 @@ func (s *Server) docsRoutes() {
 		if file == "openapi.json" {
 			mime = "application/json"
 		}
-		handler := func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", mime)
-			w.Header().Set("Content-Length", strconv.Itoa(len(data)))
-			if r.Method == http.MethodHead {
-				return
+		handler := func(c *gin.Context) {
+			c.Header("Content-Type", mime)
+			c.Header("Content-Length", strconv.Itoa(len(data)))
+			if c.Request.Method != http.MethodHead {
+				_, _ = c.Writer.Write(data)
 			}
-			_, _ = w.Write(data)
 		}
-		s.mux.HandleFunc("GET "+path, handler)
-		s.mux.HandleFunc("HEAD "+path, handler)
+		s.router.GET(path, handler)
+		s.router.HEAD(path, handler)
 	}
 }

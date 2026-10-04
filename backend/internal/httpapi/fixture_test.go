@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mishannn/sprintpoints/backend/internal/storage"
-
 	"gorm.io/gorm"
+
+	"github.com/mishannn/sprintpoints/backend/internal/storage"
 )
 
 type apiFixture struct {
@@ -33,11 +33,8 @@ func newAPIFixture(t *testing.T) *apiFixture {
 		}
 		t.Cleanup(func() { closeDatabase(admin) })
 		schema := fmt.Sprintf("poker_api_%d", time.Now().UnixNano())
-		if err := admin.Exec("CREATE SCHEMA " + schema).Error; err != nil {
-			t.Fatal(err)
-		}
 		t.Cleanup(func() {
-			if err := admin.Exec("DROP SCHEMA " + schema + " CASCADE").Error; err != nil {
+			if err := admin.Exec(`DROP SCHEMA "` + schema + `" CASCADE`).Error; err != nil {
 				t.Error(err)
 			}
 		})

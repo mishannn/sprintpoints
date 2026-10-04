@@ -38,6 +38,7 @@ services:
       dockerfile: backend/Dockerfile
     restart: unless-stopped
     environment:
+      DATABASE_SCHEMA: ${DATABASE_SCHEMA:-sprintpoints}
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
       POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}

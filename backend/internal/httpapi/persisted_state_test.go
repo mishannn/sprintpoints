@@ -8,18 +8,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"gorm.io/gorm"
+
 	"github.com/mishannn/sprintpoints/backend/internal/domain"
 	"github.com/mishannn/sprintpoints/backend/internal/storage"
-
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
-// legacyPythonSQL is a frozen dump from the Python API's SQLite database after
-// room creation, member join, and vote submission.
-//
-//go:embed testdata/legacy_python.sql
-var legacyPythonSQL embed.FS
+//go:embed testdata/persisted_state.sql
+var persistedSQL embed.FS
 
 const (
 	legacyRoomID      = "11111111-1111-4111-8111-111111111111"
@@ -32,47 +28,35 @@ const (
 	legacyOwnerToken  = "legacy-owner-token"
 )
 
-func TestGoOpensFrozenPythonCreatedDatabase(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "legacy-python.sqlite")
-	seed, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	dump, err := legacyPythonSQL.ReadFile("testdata/legacy_python.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := seed.Exec(string(dump)).Error; err != nil {
-		t.Fatalf("restore frozen Python SQL dump: %v", err)
-	}
-	seedSQL, err := seed.DB()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := seedSQL.Close(); err != nil {
-		t.Fatal(err)
-	}
-
+func TestPersistedDatabasePreservesAPIState(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "persisted.sqlite")
 	db, err := storage.OpenDatabase(sqliteURL(path))
 	if err != nil {
-		t.Fatalf("open Python-created database: %v", err)
+		t.Fatal(err)
 	}
-	assertLegacyPythonState(t, db)
-	assertLegacyPythonAPI(t, db)
-	closeLegacyTestDB(t, db)
+	dump, err := persistedSQL.ReadFile("testdata/persisted_state.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(string(dump)).Error; err != nil {
+		t.Fatal(err)
+	}
+	assertPersistedState(t, db)
+	assertPersistedAPI(t, db)
+	closePersistedTestDB(t, db)
 
-	// Migrate once more after a process-like reopen and check the same records
+	// Reopen the prepared database and check the same records
 	// through a fresh HTTP handler.
 	reopened, err := storage.OpenDatabase(sqliteURL(path))
 	if err != nil {
-		t.Fatalf("reopen Python-created database: %v", err)
+		t.Fatalf("reopen migrated database: %v", err)
 	}
-	assertLegacyPythonState(t, reopened)
-	assertLegacyPythonAPI(t, reopened)
-	closeLegacyTestDB(t, reopened)
+	assertPersistedState(t, reopened)
+	assertPersistedAPI(t, reopened)
+	closePersistedTestDB(t, reopened)
 }
 
-func assertLegacyPythonState(t *testing.T, db *gorm.DB) {
+func assertPersistedState(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	var room domain.Room
 	if err := db.First(&room, "id = ?", legacyRoomID).Error; err != nil {
@@ -98,7 +82,7 @@ func assertLegacyPythonState(t *testing.T, db *gorm.DB) {
 	}
 }
 
-func assertLegacyPythonAPI(t *testing.T, db *gorm.DB) {
+func assertPersistedAPI(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	handler := NewServer(db, []string{"*"})
 	defer handler.Close()
@@ -162,7 +146,7 @@ func assertLegacyPythonAPI(t *testing.T, db *gorm.DB) {
 	}
 }
 
-func closeLegacyTestDB(t *testing.T, db *gorm.DB) {
+func closePersistedTestDB(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	sqlDB, err := db.DB()
 	if err != nil {

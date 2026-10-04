@@ -1,12 +1,18 @@
 package httpapi
 
 import (
-	"github.com/mishannn/sprintpoints/backend/internal/domain"
-
 	"gorm.io/gorm/clause"
+
+	"github.com/mishannn/sprintpoints/backend/internal/domain"
 )
 
+type voteBody struct {
+	Value *string `json:"value" binding:"required"`
+}
+
 func (s *Server) castVote(q *request) any {
+	var body voteBody
+	q.bind(&body)
 	p := requireParticipant(q.tx, q.path("participant"), q.participantToken())
 	i := findIssue(q.tx, q.path("issue"))
 	if p.RoomID != q.path("room") || i.RoomID != q.path("room") {
@@ -16,7 +22,7 @@ func (s *Server) castVote(q *request) any {
 		fail(403, "spectatorsCannotVote")
 	}
 	t := nowUTC()
-	v := domain.Vote{ID: newID(), RoomID: p.RoomID, IssueID: i.ID, ParticipantID: p.ID, Value: q.string("value"), CreatedAt: t, UpdatedAt: t}
+	v := domain.Vote{ID: newID(), RoomID: p.RoomID, IssueID: i.ID, ParticipantID: p.ID, Value: *body.Value, CreatedAt: t, UpdatedAt: t}
 	must(q.tx.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "issue_id"}, {Name: "participant_id"}}, DoUpdates: clause.AssignmentColumns([]string{"value", "updated_at"})}).Create(&v).Error)
 	q.notifyRoom(p.RoomID)
 	return nil

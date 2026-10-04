@@ -22,7 +22,7 @@ func DatabaseURLFromEnv() string {
 		}
 		return "postgresql://" + quoteURLPart(user) + ":" + quoteURLPart(pass) + "@" + host + ":" + port + "/" + quoteURLPart(db)
 	}
-	return "sqlite:///./planningpoker.sqlite3"
+	return "sqlite:///./sprintpoints.sqlite3"
 }
 
 func quoteURLPart(s string) string { return strings.ReplaceAll(url.QueryEscape(s), "+", "%20") }

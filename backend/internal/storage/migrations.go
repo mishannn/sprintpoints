@@ -1,108 +1,79 @@
 package storage
 
 import (
+	"context"
+	"embed"
 	"fmt"
+	"io/fs"
 
+	"github.com/pressly/goose/v3"
+	"github.com/pressly/goose/v3/lock"
 	"gorm.io/gorm"
 )
 
-// Persisted revision identifiers are part of the existing database format.
-// Keep them stable so upgrading a deployed database never resets migration state.
-const baselineRevision = "0001_initial_schema"
-const headRevision = "0002_add_rooms_owner_id"
+//go:embed migrations/postgres/*.sql migrations/sqlite/*.sql
+var migrationFiles embed.FS
 
-// Migrations run in a transaction; PostgreSQL additionally serializes startup
-// across service instances before inspecting or updating the revision table.
 func migrate(db *gorm.DB, dialect string) error {
-	return db.Transaction(func(tx *gorm.DB) error {
-		if dialect == "postgres" {
-			if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext('sprintpoints_schema_migration')::bigint)").Error; err != nil {
-				return err
-			}
-		}
-		exists, err := tableExists(tx, dialect, "alembic_version")
+	if dialect == "postgres" {
+		// Check in one catalog snapshot so a concurrent first migration is never
+		// mistaken for an unmanaged schema between separate inspection queries.
+		var count int64
+		err := db.Raw(`SELECT count(*) FROM information_schema.tables t
+			WHERE t.table_schema = current_schema() AND t.table_type = 'BASE TABLE'
+			AND t.table_name <> 'goose_db_version'
+			AND NOT EXISTS (
+				SELECT 1 FROM information_schema.tables v
+				WHERE v.table_schema = current_schema() AND v.table_name = 'goose_db_version'
+			)`).Scan(&count).Error
 		if err != nil {
 			return err
 		}
-		rooms, err := tableExists(tx, dialect, "rooms")
-		if err != nil {
+		if count > 0 {
+			return fmt.Errorf("target schema contains unmanaged tables; explicit migration required")
+		}
+	} else {
+		var managed int64
+		if err := db.Raw(`SELECT count(*) FROM sqlite_master WHERE type='table' AND name='goose_db_version'`).Scan(&managed).Error; err != nil {
 			return err
 		}
-		revision := ""
-		if exists {
-			var versions []string
-			if err := tx.Raw("SELECT version_num FROM alembic_version").Scan(&versions).Error; err != nil {
+		if managed == 0 {
+			var count int64
+			if err := db.Raw(`SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&count).Error; err != nil {
 				return err
 			}
-			if len(versions) != 1 {
-				return fmt.Errorf("invalid alembic_version: expected one revision, found %d", len(versions))
-			}
-			revision = versions[0]
-			if revision != baselineRevision && revision != headRevision {
-				return fmt.Errorf("unsupported alembic revision %q", revision)
-			}
-		} else if rooms {
-			revision = baselineRevision
-		}
-		if !rooms {
-			if exists {
-				return fmt.Errorf("alembic_version exists without rooms table")
-			}
-			for _, stmt := range schemaDDL(dialect) {
-				if err := tx.Exec(stmt).Error; err != nil {
-					return err
-				}
-			}
-			if err := tx.Exec("CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL)").Error; err != nil {
-				return err
-			}
-			if err := tx.Exec("INSERT INTO alembic_version(version_num) VALUES (?)", baselineRevision).Error; err != nil {
-				return err
-			}
-			revision = baselineRevision
-		} else if !exists {
-			if err := tx.Exec("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)").Error; err != nil {
-				return err
-			}
-			if err := tx.Exec("INSERT INTO alembic_version(version_num) VALUES (?)", baselineRevision).Error; err != nil {
-				return err
+			if count > 0 {
+				return fmt.Errorf("target database contains unmanaged tables; explicit migration required")
 			}
 		}
-		if revision == baselineRevision {
-			hasOwner, err := columnExists(tx, dialect, "rooms", "owner_id")
-			if err != nil {
-				return err
-			}
-			if !hasOwner {
-				if err := tx.Exec("ALTER TABLE rooms ADD COLUMN owner_id VARCHAR(36)").Error; err != nil {
-					return err
-				}
-			}
-			if err := tx.Exec("UPDATE alembic_version SET version_num = ?", headRevision).Error; err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	}
+	return runGoose(db, dialect)
 }
 
-func tableExists(tx *gorm.DB, dialect, table string) (bool, error) {
-	var n int64
-	var err error
-	if dialect == "sqlite" {
-		err = tx.Raw("SELECT count(*) FROM sqlite_master WHERE type='table' AND name=?", table).Scan(&n).Error
-	} else {
-		err = tx.Raw("SELECT count(*) FROM information_schema.tables WHERE table_schema=current_schema() AND table_name=?", table).Scan(&n).Error
+func runGoose(db *gorm.DB, dialect string) error {
+	fsys, err := fs.Sub(migrationFiles, "migrations/"+dialect)
+	if err != nil {
+		return err
 	}
-	return n > 0, err
-}
-func columnExists(tx *gorm.DB, dialect, table, col string) (bool, error) {
-	var n int64
-	var err error
-	if dialect == "sqlite" {
-		err = tx.Raw("SELECT count(*) FROM pragma_table_info(?) WHERE name=?", table, col).Scan(&n).Error
-	} else {
-		err = tx.Raw("SELECT count(*) FROM information_schema.columns WHERE table_schema=current_schema() AND table_name=? AND column_name=?", table, col).Scan(&n).Error
+	sqlDB, err := db.DB()
+	if err != nil {
+		return err
 	}
-	return n > 0, err
+	gooseDialect := goose.Dialect(dialect)
+	var opts []goose.ProviderOption
+	if dialect == "postgres" {
+		locker, err := lock.NewPostgresSessionLocker()
+		if err != nil {
+			return err
+		}
+		opts = append(opts, goose.WithSessionLocker(locker))
+	} else {
+		gooseDialect = "sqlite3"
+	}
+	provider, err := goose.NewProvider(gooseDialect, sqlDB, fsys, opts...)
+	if err != nil {
+		return err
+	}
+	_, err = provider.Up(context.Background())
+	return err
 }
