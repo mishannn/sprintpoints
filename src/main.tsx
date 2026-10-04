@@ -2,7 +2,8 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { MantineProvider, createTheme } from "@mantine/core";
 import "@mantine/core/styles.css";
-import { App } from "./app/index";
+import { App } from "./app/App";
+import { I18nProvider } from "./shared/i18n";
 
 const theme = createTheme({
   colors: {
@@ -31,7 +32,9 @@ const theme = createTheme({
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <MantineProvider theme={theme} defaultColorScheme="light">
-      <App />
+      <I18nProvider>
+        <App />
+      </I18nProvider>
     </MantineProvider>
   </React.StrictMode>,
 );

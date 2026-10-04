@@ -1,9 +1,9 @@
 package storage
 
 import (
+	"net"
 	"net/url"
 	"os"
-	"strings"
 )
 
 // DatabaseURLFromEnv prefers an explicit URL, then PostgreSQL settings, then local SQLite.
@@ -20,9 +20,14 @@ func DatabaseURLFromEnv() string {
 		if port == "" {
 			port = "5432"
 		}
-		return "postgresql://" + quoteURLPart(user) + ":" + quoteURLPart(pass) + "@" + host + ":" + port + "/" + quoteURLPart(db)
+		connection := url.URL{
+			Scheme:  "postgresql",
+			User:    url.UserPassword(user, pass),
+			Host:    net.JoinHostPort(host, port),
+			Path:    "/" + db,
+			RawPath: "/" + url.PathEscape(db),
+		}
+		return connection.String()
 	}
 	return "sqlite:///./sprintpoints.sqlite3"
 }
-
-func quoteURLPart(s string) string { return strings.ReplaceAll(url.QueryEscape(s), "+", "%20") }

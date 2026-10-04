@@ -40,6 +40,7 @@ func TestManualPostgresImport(t *testing.T) {
 		fail   bool
 	}{
 		{"copy", "", false},
+		{"timezone", "", false},
 		{"bad-room-reference", `UPDATE %s.votes SET room_id = 'missing'`, true},
 		{"duplicate-token", `INSERT INTO %s.participants VALUES ('p2','r','Other','member-secret',false,'2025-01-02 03:04:05','2025-01-02 03:04:05')`, true},
 	} {
@@ -72,6 +73,12 @@ func TestManualPostgresImport(t *testing.T) {
 				`INSERT INTO %s.alembic_version VALUES ('old')`,
 			} {
 				if err := db.Exec(fmt.Sprintf(statement, `"`+source+`"`)).Error; err != nil {
+					t.Fatal(err)
+				}
+			}
+			if tc.name == "timezone" {
+				statement := fmt.Sprintf(`ALTER TABLE %s.rooms ALTER COLUMN created_at TYPE timestamptz USING created_at AT TIME ZONE 'UTC'; UPDATE %s.rooms SET created_at='2025-01-02 06:04:05+03'`, source, source)
+				if err := db.Exec(statement).Error; err != nil {
 					t.Fatal(err)
 				}
 			}

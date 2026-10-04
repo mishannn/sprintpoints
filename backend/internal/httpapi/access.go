@@ -9,10 +9,7 @@ import (
 
 // requireHost serializes facilitator mutations on the room row in PostgreSQL.
 func requireHost(db *gorm.DB, id, t string) domain.Room {
-	locked := db
-	if db.Dialector.Name() == "postgres" {
-		locked = db.Clauses(clause.Locking{Strength: "UPDATE"})
-	}
+	locked := db.Clauses(clause.Locking{Strength: "UPDATE"})
 	r := findRoom(locked, id)
 	if !tokensEqual(t, r.HostToken) {
 		fail(403, "hostAccessDenied")
@@ -22,10 +19,7 @@ func requireHost(db *gorm.DB, id, t string) domain.Room {
 
 // The participant lock prevents votes racing with a switch to spectator mode.
 func requireParticipant(db *gorm.DB, id, t string) domain.Participant {
-	locked := db
-	if db.Dialector.Name() == "postgres" {
-		locked = db.Clauses(clause.Locking{Strength: "UPDATE"})
-	}
+	locked := db.Clauses(clause.Locking{Strength: "UPDATE"})
 	p := findParticipant(locked, id)
 	if !tokensEqual(t, p.Token) {
 		fail(403, "participantAccessDenied")

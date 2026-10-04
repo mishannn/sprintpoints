@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { isAppError } from "../lib/AppError";
+import { AppError } from "../lib/AppError";
 
 export type Language = "en" | "ru";
 
@@ -29,8 +29,6 @@ const translations: Record<Language, Record<string, TranslationValue>> = {
     "action.cancel": "Cancel",
     "action.chooseColumn": "Choose column",
     "action.chooseCsvFile": "Choose CSV file",
-    "action.closeAddStoryForm": "Close add story form",
-    "action.closeImportForm": "Close import form",
     "action.copyInviteLink": "Copy invite link",
     "action.copyLink": "Copy link",
     "action.copied": "Copied",
@@ -80,16 +78,11 @@ const translations: Record<Language, Record<string, TranslationValue>> = {
     "confirm.archiveEstimatedStories": "Archive all estimated stories?",
     "confirm.deleteParticipant": ({ name }) => `Delete ${name} from the room?`,
     "confirm.transferOwnership": ({ name }) => `Make ${name} the host? You will lose host controls.`,
-    "error.activateImportedStory": "Could not activate the imported story.",
-    "error.activateNewStory": "Could not activate the new story.",
     "error.activateStory": "Could not switch story.",
-    "error.activateStoryAfterArchive": "Could not activate the next story after archiving.",
-    "error.addFacilitator": "Could not add the facilitator.",
     "error.addStory": "Could not add the story.",
     "error.archiveStory": "Could not archive the story.",
     "error.archiveEstimatedStories": "Could not archive estimated stories.",
     "error.chooseTitleColumn": "Choose a column for Title.",
-    "error.createFirstStory": "Could not create the first story.",
     "error.createRoom": "Could not create the room.",
     "error.createRoomApi": "Could not create a room.",
     "error.csvHeaderEmpty": "CSV header row is empty.",
@@ -105,11 +98,9 @@ const translations: Record<Language, Record<string, TranslationValue>> = {
     "error.refreshRoom": "Could not refresh the room.",
     "error.resetVoting": "Could not reset voting.",
     "error.revealVotes": "Could not reveal votes.",
-    "error.roomNotFound": "Room not found.",
     "error.saveEstimate": "Could not save the estimate.",
     "error.saveVote": "Could not save your vote.",
     "error.storyTitleRequired": "Story title is required.",
-    "error.apiMissing": "Backend API is not configured.",
     "error.transferOwnership": "Could not transfer the host role.",
     "error.unarchiveStory": "Could not unarchive the story.",
     "error.updateParticipantMode": "Could not switch to observer mode.",
@@ -159,11 +150,6 @@ const translations: Record<Language, Record<string, TranslationValue>> = {
     "placeholder.linkPattern": "https://jira.company.org/browse/{VALUE}",
     "placeholder.roomCode": "ABC123",
     "placeholder.title": "Good task",
-    "setup.heading": "Connect the backend to start planning",
-    "setup.instructionsAfterMigration": "then set",
-    "setup.instructionsIntro": "Start the FastAPI backend from the project root",
-    "setup.instructionsOutro": "when your API is hosted separately.",
-    "setup.instructionsTo": "to",
     "share.description": "Share the room code or copy the current link.",
     "state.noStorySelected": "No story selected",
     "state.archiveEmpty": "No archived stories.",
@@ -181,8 +167,6 @@ const translations: Record<Language, Record<string, TranslationValue>> = {
     "action.cancel": "Отмена",
     "action.chooseColumn": "Выберите колонку",
     "action.chooseCsvFile": "Выбрать CSV-файл",
-    "action.closeAddStoryForm": "Закрыть форму задачи",
-    "action.closeImportForm": "Закрыть форму импорта",
     "action.copyInviteLink": "Скопировать ссылку-приглашение",
     "action.copyLink": "Скопировать ссылку",
     "action.copied": "Скопировано",
@@ -232,16 +216,11 @@ const translations: Record<Language, Record<string, TranslationValue>> = {
     "confirm.archiveEstimatedStories": "Архивировать все оцененные задачи?",
     "confirm.deleteParticipant": ({ name }) => `Удалить ${name} из комнаты?`,
     "confirm.transferOwnership": ({ name }) => `Назначить ${name} хостом? Вы потеряете права хоста.`,
-    "error.activateImportedStory": "Не удалось активировать импортированную задачу.",
-    "error.activateNewStory": "Не удалось активировать новую задачу.",
     "error.activateStory": "Не удалось переключить задачу.",
-    "error.activateStoryAfterArchive": "Не удалось активировать следующую задачу после архивации.",
-    "error.addFacilitator": "Не удалось добавить фасилитатора.",
     "error.addStory": "Не удалось добавить задачу.",
     "error.archiveStory": "Не удалось архивировать задачу.",
     "error.archiveEstimatedStories": "Не удалось архивировать оцененные задачи.",
     "error.chooseTitleColumn": "Выберите колонку для названия.",
-    "error.createFirstStory": "Не удалось создать первую задачу.",
     "error.createRoom": "Не удалось создать комнату.",
     "error.createRoomApi": "Не удалось создать комнату.",
     "error.csvHeaderEmpty": "Строка заголовков CSV пустая.",
@@ -257,11 +236,9 @@ const translations: Record<Language, Record<string, TranslationValue>> = {
     "error.refreshRoom": "Не удалось обновить комнату.",
     "error.resetVoting": "Не удалось сбросить голосование.",
     "error.revealVotes": "Не удалось показать голоса.",
-    "error.roomNotFound": "Комната не найдена.",
     "error.saveEstimate": "Не удалось сохранить оценку.",
     "error.saveVote": "Не удалось сохранить ваш голос.",
     "error.storyTitleRequired": "Название задачи обязательно.",
-    "error.apiMissing": "Backend API не настроен.",
     "error.transferOwnership": "Не удалось передать роль хоста.",
     "error.unarchiveStory": "Не удалось вернуть задачу из архива.",
     "error.updateParticipantMode": "Не удалось перейти в режим наблюдателя.",
@@ -311,11 +288,6 @@ const translations: Record<Language, Record<string, TranslationValue>> = {
     "placeholder.linkPattern": "https://jira.company.org/browse/{VALUE}",
     "placeholder.roomCode": "ABC123",
     "placeholder.title": "Хорошая задача",
-    "setup.heading": "Подключите backend, чтобы начать планирование",
-    "setup.instructionsAfterMigration": "затем укажите",
-    "setup.instructionsIntro": "Запустите FastAPI backend из корня проекта",
-    "setup.instructionsOutro": "если API размещен отдельно.",
-    "setup.instructionsTo": "в",
     "share.description": "Поделитесь кодом комнаты или скопируйте текущую ссылку.",
     "state.noStorySelected": "Задача не выбрана",
     "state.archiveEmpty": "В архиве пока нет задач.",
@@ -328,20 +300,11 @@ const translations: Record<Language, Record<string, TranslationValue>> = {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
+const russianPlurals = new Intl.PluralRules("ru");
+
 function getRussianPlural(count: number, one: string, few: string, many: string) {
-  const absolute = Math.abs(count);
-  const mod10 = absolute % 10;
-  const mod100 = absolute % 100;
-
-  if (mod10 === 1 && mod100 !== 11) {
-    return one;
-  }
-
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
-    return few;
-  }
-
-  return many;
+  const category = russianPlurals.select(count);
+  return category === "one" ? one : category === "few" ? few : many;
 }
 
 function detectLanguage(): Language {
@@ -363,7 +326,7 @@ function formatTranslation(value: TranslationValue, params: TranslationParams) {
 }
 
 export function translateError(error: unknown, t: I18nContextValue["t"], fallbackMessage: string) {
-  if (isAppError(error)) {
+  if (error instanceof AppError) {
     return t(`error.${error.code}`);
   }
 

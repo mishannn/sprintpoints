@@ -14,7 +14,7 @@ Gin handles routing and JSON binding; gin-contrib/cors handles browser origins; 
 
 Handlers use a database transaction for access checks and mutations. Failure rolls back writes. Room updates are broadcast only after commit. `access.go` locks affected PostgreSQL rows; `room_state.go` controls token visibility. WebSocket authentication lives in `websocket.go`; the hub has no database dependency.
 
-PostgreSQL uses only `DATABASE_SCHEMA` (default `sprintpoints`) in its search path. There is no fallback to `public`. SQLite uses one connection with foreign keys enabled. Initial tables and subsequent schema changes are versioned SQL in `storage/migrations/{postgres,sqlite}`. PostgreSQL migration locking prevents concurrent startup races. Migration history belongs to the new schema; unmanaged tables are rejected. Data transfer stays exclusively in the manual SQL file under `ops/database`; deployment instructions are in the root README.
+PostgreSQL uses only `DATABASE_SCHEMA` (default `sprintpoints`) in its search path. There is no fallback to `public`. SQLite uses one connection with foreign keys enabled. Initial tables and subsequent schema changes are versioned SQL in `storage/migrations`. PostgreSQL migration locking prevents concurrent startup races. Both databases use the same SQL migration and store timestamps in UTC. GORM handles queries, row-lock clauses and table inspection through its dialect drivers. Migration history belongs to the new schema; unmanaged tables are rejected. Data transfer stays exclusively in the manual SQL file under `ops/database`; deployment instructions are in the root README.
 
 ## API and tests
 
