@@ -341,7 +341,7 @@ func TestHTTPTransportContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer response.Body.Close()
-	if response.StatusCode != 307 || response.Header.Get("Location") != "/api/health" {
+	if response.StatusCode != 307 || response.Header.Get("Location") != f.h.URL+"/api/health" {
 		t.Fatalf("slash redirect: %d %s", response.StatusCode, response.Header.Get("Location"))
 	}
 	handler := NewServer(f.db, []string{"https://allowed.example"})

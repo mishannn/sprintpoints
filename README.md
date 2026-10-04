@@ -182,7 +182,7 @@ go build -o .tmp/sprintpoints-server ./backend/cmd/server
 uv run pytest backend/tests -q
 ```
 
-Python 3.12+ and uv are needed only for these reference tests, not for the production image. The parity suite skips when the Go binary is absent; CI always builds it first. `/openapi.json`, `/docs`, and `/redoc` retain the original API documentation. WebSocket notifications use an in-process registry, so run one backend instance (as in the existing Compose deployment).
+Python 3.12+ and uv are needed only for these reference tests, not for the production image. The parity suite compares full validation errors and HTTP behavior in addition to application workflows, including content types, numeric boolean coercion, malformed JSON diagnostics, HEAD requests, redirects, and server errors. It skips when the Go binary is absent; CI always builds it first. `/openapi.json`, `/docs`, and `/redoc` retain the original API documentation. WebSocket notifications use an in-process registry, so run one backend instance (as in the existing Compose deployment).
 
 ```bash
 npm run dev

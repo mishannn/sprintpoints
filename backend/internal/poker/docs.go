@@ -3,6 +3,7 @@ package poker
 import (
 	"embed"
 	"net/http"
+	"strconv"
 )
 
 // The API description is the compatibility contract exported from the original
@@ -21,9 +22,15 @@ func (s *Server) docsRoutes() {
 		if file == "openapi.json" {
 			mime = "application/json"
 		}
-		s.mux.HandleFunc("GET "+path, func(w http.ResponseWriter, r *http.Request) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", mime)
+			w.Header().Set("Content-Length", strconv.Itoa(len(data)))
+			if r.Method == http.MethodHead {
+				return
+			}
 			_, _ = w.Write(data)
-		})
+		}
+		s.mux.HandleFunc("GET "+path, handler)
+		s.mux.HandleFunc("HEAD "+path, handler)
 	}
 }

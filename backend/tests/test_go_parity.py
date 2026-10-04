@@ -8,8 +8,10 @@ databases and actual HTTP/WebSocket connections for both implementations.
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import socket
+import sqlite3
 import subprocess
 import sys
 import time
@@ -387,3 +389,86 @@ def test_go_opens_python_created_database(tmp_path: Path, go_binary: Path) -> No
     finally:
         python.stop()
         go.stop()
+
+
+def test_http_edge_contract_parity(tmp_path: Path, go_binary: Path) -> None:
+    """Keep validation and transport edge behavior in the same legacy oracle."""
+    create_payload = {"roomName": "Edges", "participantName": "Owner", "defaults": {
+        "roomName": "Fallback", "facilitatorName": "Facilitator", "firstStoryTitle": "First"}}
+    cases = [
+        ("null_body", "POST", "/api/rooms", 'null', "application/json", 422),
+        ("empty_body_no_type", "POST", "/api/rooms", '', None, 422),
+        ("empty_body_plain", "POST", "/api/rooms", '', "text/plain", 422),
+        ("empty_body_json", "POST", "/api/rooms", '', "application/json", 422),
+        ("malformed_object", "POST", "/api/rooms", "{", "application/json", 422),
+        ("malformed_property", "POST", "/api/rooms", '{"x":1,}', "application/json", 422),
+        ("malformed_value", "POST", "/api/rooms", '{"x":}', "application/json", 422),
+        ("missing_colon", "POST", "/api/rooms", '{"x" 1}', "application/json", 422),
+        ("missing_comma", "POST", "/api/rooms", '{"x":1 "y":2}', "application/json", 422),
+        ("unterminated_string", "POST", "/api/rooms", '{"x":"abc}', "application/json", 422),
+        ("invalid_escape", "POST", "/api/rooms", '{"x":"\\q"}', "application/json", 422),
+        ("invalid_unicode_escape", "POST", "/api/rooms", '{"x":"\\uZZZZ"}', "application/json", 422),
+        ("literal_control", "POST", "/api/rooms", '{"x":"a\nb"}', "application/json", 422),
+        ("trailing_data", "POST", "/api/rooms", '{} {}', "application/json", 422),
+        ("leading_zero", "POST", "/api/rooms", '{"x":01}', "application/json", 422),
+        ("unicode_error_offset", "POST", "/api/rooms", '{"я":1,}', "application/json", 422),
+        ("blank_whitespace", "POST", "/api/rooms", ' ', "application/json", 422),
+        ("text_plain", "POST", "/api/rooms", json.dumps(create_payload), "text/plain", 422),
+        ("json_without_type", "POST", "/api/rooms", json.dumps(create_payload), None, 422),
+        ("vendor_json", "POST", "/api/rooms", json.dumps(create_payload), "application/vnd.test+json", 201),
+        ("json_charset", "POST", "/api/rooms", json.dumps(create_payload), "application/json; charset=utf-8", 201),
+        ("bool_exponent", "POST", "/api/rooms/{code}/join", '{"name":"Member","isSpectator":1e0}', "application/json", 201),
+        ("bool_fraction_zero", "POST", "/api/rooms/{code}/join", '{"name":"Member","isSpectator":0.000}', "application/json", 201),
+        ("bool_fraction_one", "POST", "/api/rooms/{code}/join", '{"name":"Member","isSpectator":1.000}', "application/json", 201),
+        ("bool_invalid_float", "POST", "/api/rooms/{code}/join", '{"name":"Member","isSpectator":1.5}', "application/json", 422),
+        ("bool_invalid_integer", "POST", "/api/rooms/{code}/join", '{"name":"Member","isSpectator":2}', "application/json", 422),
+        ("bool_string_preserved_input", "POST", "/api/rooms/{code}/join", '{"isSpectator":"yes"}', "application/json", 422),
+        ("head_docs", "HEAD", "/docs", None, None, 200),
+        ("head_redoc", "HEAD", "/redoc", None, None, 200),
+        ("head_openapi", "HEAD", "/openapi.json", None, None, 200),
+        ("head_oauth_redirect", "HEAD", "/docs/oauth2-redirect", None, None, 200),
+        ("head_health", "HEAD", "/api/health", None, None, 405),
+        ("slash_redirect", "GET", "/api/health/?x=1", None, None, 307),
+        ("slash_wrong_method", "POST", "/api/health/", None, None, 307),
+        ("unknown_slash", "GET", "/unknown/", None, None, 404),
+    ]
+    outcomes = {}
+    for kind in ("python", "go"):
+        server = Server(kind, tmp_path / f"{kind}-edges.sqlite")
+        server.start()
+        try:
+            with httpx.Client(base_url=server.base, trust_env=False, follow_redirects=False) as client:
+                response = client.post("/api/rooms", json=create_payload)
+                assert response.status_code == 201
+                code = response.json()["state"]["room"]["code"]
+                observed = {}
+                for name, method, path, content, content_type, expected in cases:
+                    headers = {"Content-Type": content_type} if content_type else {}
+                    response = client.request(method, path.replace("{code}", code), content=content, headers=headers)
+                    assert response.status_code == expected, (kind, name, response.status_code, response.text)
+                    body = None
+                    if response.content:
+                        try:
+                            body = response.json()
+                        except ValueError:
+                            body = response.text
+                    if response.status_code == 201:
+                        # Dynamic IDs/tokens differ; retain the meaningful accepted input.
+                        body = {"is_spectator": body["participant"]["is_spectator"]} if "participantToken" in body and "state" not in body else {"name": body["state"]["room"]["name"]}
+                    location = response.headers.get("location")
+                    if location:
+                        location = location.replace(server.base, "$ORIGIN")
+                    allow = sorted(x.strip() for x in response.headers.get("allow", "").split(",") if x.strip())
+                    observed[name] = (response.status_code, body, location, allow)
+                # An unavailable schema exercises the default 500 response without
+                # modifying either implementation or touching any real database.
+                with sqlite3.connect(server.path) as database:
+                    database.execute("DROP TABLE rooms")
+                response = client.get(f"/api/rooms/{code}")
+                assert response.status_code == 500
+                observed["internal_error"] = (response.status_code, response.text, response.headers.get("content-type"))
+                outcomes[kind] = observed
+        finally:
+            server.stop()
+    for name in outcomes["python"]:
+        assert outcomes["python"][name] == outcomes["go"][name], (name, outcomes["python"][name], outcomes["go"][name])

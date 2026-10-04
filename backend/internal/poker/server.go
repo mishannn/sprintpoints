@@ -3,6 +3,7 @@ package poker
 import (
 	"encoding/json"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -48,7 +49,9 @@ func (s *Server) route(pattern string, status int, fields []field, fn func(*requ
 					writeJSON(w, a.status, map[string]any{"detail": a.detail})
 				} else {
 					log.Printf("request failed: %v", e)
-					writeJSON(w, 500, map[string]any{"detail": "Internal Server Error"})
+					w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+					w.WriteHeader(http.StatusInternalServerError)
+					_, _ = w.Write([]byte("Internal Server Error"))
 				}
 			}
 		}()
@@ -86,10 +89,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if origin != "" {
-		if !wildcard {
-			w.Header().Add("Vary", "Origin")
-		}
 		if r.Method == "OPTIONS" && r.Header.Get("Access-Control-Request-Method") != "" {
+			if !wildcard {
+				w.Header().Add("Vary", "Origin")
+			}
 			w.Header().Set("Access-Control-Allow-Methods", "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT")
 			w.Header().Set("Access-Control-Max-Age", "600")
 			if h := r.Header.Get("Access-Control-Request-Headers"); h != "" {
@@ -124,13 +127,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if allowed {
-			if wildcard && r.Header.Get("Cookie") == "" {
+			if wildcard {
 				w.Header().Set("Access-Control-Allow-Origin", "*")
 			} else {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
-				if wildcard {
-					w.Header().Add("Vary", "Origin")
-				}
+				w.Header().Add("Vary", "Origin")
 			}
 		}
 	}
@@ -139,17 +140,47 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if pattern == "" && r.URL.Path != "/" && strings.HasSuffix(r.URL.Path, "/") {
 		clone := r.Clone(r.Context())
 		clone.URL.Path = strings.TrimSuffix(r.URL.Path, "/")
-		if _, matched := s.mux.Handler(clone); matched != "" {
-			http.Redirect(w, r, clone.URL.String(), http.StatusTemporaryRedirect)
+		matchedRoute := false
+		for _, method := range []string{r.Method, "GET", "HEAD", "POST", "PATCH", "PUT", "DELETE"} {
+			probe := clone.Clone(clone.Context())
+			probe.Method = method
+			if _, matched := s.mux.Handler(probe); matched != "" {
+				matchedRoute = true
+				break
+			}
+		}
+		if matchedRoute {
+			// FastAPI/Starlette emits an absolute Location. Uvicorn trusts proxy
+			// scheme headers from loopback clients, while leaving Host untouched.
+			scheme := r.URL.Scheme
+			if scheme == "" {
+				scheme = "http"
+				if r.TLS != nil {
+					scheme = "https"
+				}
+			}
+			if isLoopbackRemote(r.RemoteAddr) {
+				if proto := strings.TrimSpace(strings.Split(r.Header.Get("X-Forwarded-Proto"), ",")[0]); proto == "http" || proto == "https" {
+					scheme = proto
+				}
+			}
+			location := scheme + "://" + r.Host + clone.URL.RequestURI()
+			w.Header().Set("Location", location)
+			w.Header().Set("Content-Length", "0")
+			w.WriteHeader(http.StatusTemporaryRedirect)
 			return
 		}
 	}
 	if pattern == "" || (r.Method == "HEAD" && strings.HasPrefix(pattern, "GET ")) {
 		allowed := []string{}
-		for _, method := range []string{"GET", "POST", "PATCH", "PUT", "DELETE"} {
+		for _, method := range []string{"GET", "HEAD", "POST", "PATCH", "PUT", "DELETE"} {
 			clone := r.Clone(r.Context())
 			clone.Method = method
-			if _, matched := s.mux.Handler(clone); matched != "" {
+			_, matched := s.mux.Handler(clone)
+			if method == "HEAD" && !strings.HasPrefix(matched, "HEAD ") {
+				continue
+			}
+			if matched != "" {
 				allowed = append(allowed, method)
 			}
 		}
@@ -162,6 +193,15 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.mux.ServeHTTP(w, r)
+}
+
+func isLoopbackRemote(addr string) bool {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		host = addr
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 func (s *Server) websocket(w http.ResponseWriter, r *http.Request) {
