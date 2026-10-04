@@ -40,3 +40,23 @@ func TestTypedJSONBinding(t *testing.T) {
 		t.Fatalf("explicit false: %d %v", status, result)
 	}
 }
+
+func TestRequiredNullableFields(t *testing.T) {
+	f := newAPIFixture(t)
+	_, state := f.createRoom()
+	room := state["room"].(map[string]any)
+	roomID := room["id"].(string)
+	issueID := state["issues"].([]any)[0].(map[string]any)["id"].(string)
+	for _, tc := range []struct{ method, path, field string }{
+		{"PATCH", "/api/rooms/" + roomID + "/active-issue", "issueId"},
+		{"PATCH", "/api/rooms/" + roomID + "/issues/" + issueID + "/archive", "nextActiveIssueId"},
+		{"POST", "/api/rooms/" + roomID + "/issues/archive-estimated", "nextActiveIssueId"},
+	} {
+		for _, body := range []map[string]any{{}, {tc.field: 1}} {
+			status, response := f.request(tc.method, tc.path, body, nil)
+			if status != 422 {
+				t.Fatalf("%s %s: %d %v", tc.method, tc.path, status, response)
+			}
+		}
+	}
+}

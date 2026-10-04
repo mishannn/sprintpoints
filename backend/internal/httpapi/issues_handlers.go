@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/mishannn/sprintpoints/backend/internal/domain"
@@ -21,10 +22,10 @@ type importIssueBody struct {
 	Estimate    *string `json:"estimate"`
 }
 type nextActiveBody struct {
-	NextActiveIssueID *string `json:"nextActiveIssueId"`
+	NextActiveIssueID json.RawMessage `json:"nextActiveIssueId" binding:"required"`
 }
 type activeIssueBody struct {
-	IssueID *string `json:"issueId"`
+	IssueID json.RawMessage `json:"issueId" binding:"required"`
 }
 type estimateBody struct {
 	Value *string `json:"value" binding:"required"`
@@ -123,6 +124,7 @@ func (s *Server) deleteIssue(q *request) any {
 func (s *Server) archiveIssue(q *request) any {
 	var body nextActiveBody
 	q.bind(&body)
+	nextID := nullableString(body.NextActiveIssueID)
 	r := requireHost(q.tx, q.path("room"), q.hostToken())
 	i := findIssue(q.tx, q.path("issue"))
 	if i.RoomID != r.ID {
@@ -132,7 +134,7 @@ func (s *Server) archiveIssue(q *request) any {
 	i.ArchivedAt = &t
 	must(q.tx.Save(&i).Error)
 	if r.ActiveIssueID != nil && *r.ActiveIssueID == i.ID {
-		r.ActiveIssueID = body.NextActiveIssueID
+		r.ActiveIssueID = nextID
 		r.Revealed = false
 		r.UpdatedAt = t
 		must(q.tx.Save(&r).Error)
@@ -144,6 +146,7 @@ func (s *Server) archiveIssue(q *request) any {
 func (s *Server) archiveEstimatedIssues(q *request) any {
 	var body nextActiveBody
 	q.bind(&body)
+	nextID := nullableString(body.NextActiveIssueID)
 	r := requireHost(q.tx, q.path("room"), q.hostToken())
 	out := []domain.Issue{}
 	must(q.tx.Where("room_id = ? AND archived_at IS NULL AND estimate IS NOT NULL AND estimate <> ?", r.ID, "").Order("position").Find(&out).Error)
@@ -153,7 +156,7 @@ func (s *Server) archiveEstimatedIssues(q *request) any {
 		i.ArchivedAt = &t
 		must(q.tx.Save(i).Error)
 		if r.ActiveIssueID != nil && *r.ActiveIssueID == i.ID {
-			r.ActiveIssueID = body.NextActiveIssueID
+			r.ActiveIssueID = nextID
 			r.Revealed = false
 			r.UpdatedAt = t
 			must(q.tx.Save(&r).Error)
@@ -180,8 +183,8 @@ func (s *Server) unarchiveIssue(q *request) any {
 func (s *Server) setActiveIssue(q *request) any {
 	var body activeIssueBody
 	q.bind(&body)
+	id := nullableString(body.IssueID)
 	r := requireHost(q.tx, q.path("room"), q.hostToken())
-	id := body.IssueID
 	if id != nil {
 		i := findIssue(q.tx, *id)
 		if i.RoomID != r.ID {

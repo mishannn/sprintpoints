@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -45,4 +46,13 @@ func (s *Server) route(method, path string, status int, fn func(*request) any) {
 			s.hub.Broadcast(q.notify)
 		}
 	})
+}
+
+// RawMessage preserves presence for required fields that accept explicit null.
+func nullableString(raw json.RawMessage) *string {
+	var value *string
+	if err := json.Unmarshal(raw, &value); err != nil {
+		fail(http.StatusUnprocessableEntity, err.Error())
+	}
+	return value
 }
