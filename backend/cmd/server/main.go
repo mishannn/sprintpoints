@@ -11,7 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mishannn/sprintpoints/backend/internal/poker"
+	"github.com/mishannn/sprintpoints/backend/internal/httpapi"
+	"github.com/mishannn/sprintpoints/backend/internal/storage"
 )
 
 func main() {
@@ -29,7 +30,7 @@ func main() {
 		}
 		return
 	}
-	db, err := poker.OpenDatabase(poker.DatabaseURLFromEnv())
+	db, err := storage.OpenDatabase(storage.DatabaseURLFromEnv())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -48,7 +49,7 @@ func main() {
 			origins = append(origins, v)
 		}
 	}
-	handler := poker.NewServer(db, origins)
+	handler := httpapi.NewServer(db, origins)
 	defer handler.Close()
 	addr := os.Getenv("LISTEN_ADDR")
 	if addr == "" {

@@ -1,4 +1,4 @@
-package poker
+package httpapi
 
 import (
 	"embed"
@@ -7,6 +7,9 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
+
+	"github.com/mishannn/sprintpoints/backend/internal/domain"
+	"github.com/mishannn/sprintpoints/backend/internal/storage"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -50,7 +53,7 @@ func TestGoOpensFrozenPythonCreatedDatabase(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	db, err := OpenDatabase(sqliteURL(path))
+	db, err := storage.OpenDatabase(sqliteURL(path))
 	if err != nil {
 		t.Fatalf("open Python-created database: %v", err)
 	}
@@ -60,7 +63,7 @@ func TestGoOpensFrozenPythonCreatedDatabase(t *testing.T) {
 
 	// Migrate once more after a process-like reopen and check the same records
 	// through a fresh HTTP handler.
-	reopened, err := OpenDatabase(sqliteURL(path))
+	reopened, err := storage.OpenDatabase(sqliteURL(path))
 	if err != nil {
 		t.Fatalf("reopen Python-created database: %v", err)
 	}
@@ -71,25 +74,25 @@ func TestGoOpensFrozenPythonCreatedDatabase(t *testing.T) {
 
 func assertLegacyPythonState(t *testing.T, db *gorm.DB) {
 	t.Helper()
-	var room Room
+	var room domain.Room
 	if err := db.First(&room, "id = ?", legacyRoomID).Error; err != nil {
 		t.Fatal(err)
 	}
 	if room.Code != legacyRoomCode || room.Name != "Cross-version" || room.HostToken != legacyHostToken || room.OwnerID == nil || *room.OwnerID != legacyOwnerID {
 		t.Fatalf("restored room mismatch: %#v", room)
 	}
-	var members []Participant
+	var members []domain.Participant
 	if err := db.Where("room_id = ?", legacyRoomID).Order("name").Find(&members).Error; err != nil {
 		t.Fatal(err)
 	}
 	if len(members) != 2 || members[0].ID != legacyOwnerID || members[0].Token != legacyOwnerToken || members[1].ID != legacyMemberID || members[1].Token != legacyMemberToken {
 		t.Fatalf("restored participants mismatch: %#v", members)
 	}
-	var issue Issue
+	var issue domain.Issue
 	if err := db.First(&issue, "id = ?", legacyIssueID).Error; err != nil || issue.Title != "Persisted issue" {
 		t.Fatalf("restored issue mismatch: %#v, err=%v", issue, err)
 	}
-	var votes []Vote
+	var votes []domain.Vote
 	if err := db.Where("room_id = ?", legacyRoomID).Find(&votes).Error; err != nil || len(votes) != 1 || votes[0].Value != "13" || votes[0].ParticipantID != legacyMemberID || votes[0].IssueID != legacyIssueID {
 		t.Fatalf("restored votes mismatch: %#v, err=%v", votes, err)
 	}

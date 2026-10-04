@@ -1,7 +1,6 @@
-package poker
+package storage
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -9,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/mishannn/sprintpoints/backend/internal/domain"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
@@ -29,13 +30,13 @@ func TestFreshAndIdempotentMigration(t *testing.T) {
 		t.Fatalf("revision=%q", revision)
 	}
 	now := time.Now()
-	if err := db.Create(&Room{ID: "r1", Code: "C", Name: "Room", HostToken: "secret", CardSet: JSONStrings{"1", "2"}, CreatedAt: now, UpdatedAt: now}).Error; err != nil {
+	if err := db.Create(&domain.Room{ID: "r1", Code: "C", Name: "Room", HostToken: "secret", CardSet: domain.JSONStrings{"1", "2"}, CreatedAt: now, UpdatedAt: now}).Error; err != nil {
 		t.Fatal(err)
 	}
 	if _, err := OpenDatabase(sqliteURL(path)); err != nil {
 		t.Fatal(err)
 	}
-	var got Room
+	var got domain.Room
 	if err := db.First(&got, "id = ?", "r1").Error; err != nil {
 		t.Fatal(err)
 	}
@@ -104,26 +105,26 @@ func TestPostgresPersistence(t *testing.T) {
 			}
 			defer dbSQL.Close()
 			now := time.Now().UTC()
-			room := Room{ID: "room", Code: "CODE", Name: "room", HostToken: "host", CardSet: JSONStrings{"1", "2"}, CreatedAt: now, UpdatedAt: now}
+			room := domain.Room{ID: "room", Code: "CODE", Name: "room", HostToken: "host", CardSet: domain.JSONStrings{"1", "2"}, CreatedAt: now, UpdatedAt: now}
 			if err := db.Create(&room).Error; err != nil {
 				t.Fatal(err)
 			}
-			participant := Participant{ID: "participant", RoomID: room.ID, Name: "person", Token: "token", LastSeenAt: now, CreatedAt: now}
-			issue := Issue{ID: "issue", RoomID: room.ID, Title: "task", CreatedAt: now}
+			participant := domain.Participant{ID: "participant", RoomID: room.ID, Name: "person", Token: "token", LastSeenAt: now, CreatedAt: now}
+			issue := domain.Issue{ID: "issue", RoomID: room.ID, Title: "task", CreatedAt: now}
 			if err := db.Create(&participant).Error; err != nil {
 				t.Fatal(err)
 			}
 			if err := db.Create(&issue).Error; err != nil {
 				t.Fatal(err)
 			}
-			vote := Vote{ID: "vote", RoomID: room.ID, IssueID: issue.ID, ParticipantID: participant.ID, Value: "3", CreatedAt: now, UpdatedAt: now}
+			vote := domain.Vote{ID: "vote", RoomID: room.ID, IssueID: issue.ID, ParticipantID: participant.ID, Value: "3", CreatedAt: now, UpdatedAt: now}
 			if err := db.Create(&vote).Error; err != nil {
 				t.Fatal(err)
 			}
 			if err := db.Exec("INSERT INTO votes(id,room_id,issue_id,participant_id,value,created_at,updated_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(issue_id,participant_id) DO UPDATE SET value=excluded.value", "vote2", room.ID, issue.ID, participant.ID, "5", now, now).Error; err != nil {
 				t.Fatal(err)
 			}
-			var saved Vote
+			var saved domain.Vote
 			if err := db.First(&saved, "issue_id = ? AND participant_id = ?", issue.ID, participant.ID).Error; err != nil || saved.Value != "5" {
 				t.Fatalf("vote upsert: %#v, err=%v", saved, err)
 			}
@@ -131,7 +132,7 @@ func TestPostgresPersistence(t *testing.T) {
 				t.Fatal(err)
 			}
 			var count int64
-			db.Model(&Vote{}).Count(&count)
+			db.Model(&domain.Vote{}).Count(&count)
 			if count != 0 {
 				t.Fatalf("room cascade left %d votes", count)
 			}
@@ -192,7 +193,7 @@ func TestLegacyUnversionedAndBaselineDatabases(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var got Room
+			var got domain.Room
 			if err := db.First(&got, "id='r'").Error; err != nil {
 				t.Fatal(err)
 			}
@@ -235,122 +236,15 @@ func TestMemoryDatabasesArePrivate(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer closeDatabase(second)
-	if err := first.Create(&Room{ID: "private", Code: "P", Name: "private", HostToken: "secret", CardSet: JSONStrings{}, CreatedAt: time.Now(), UpdatedAt: time.Now()}).Error; err != nil {
+	if err := first.Create(&domain.Room{ID: "private", Code: "P", Name: "private", HostToken: "secret", CardSet: domain.JSONStrings{}, CreatedAt: time.Now(), UpdatedAt: time.Now()}).Error; err != nil {
 		t.Fatal(err)
 	}
 	var count int64
-	if err := second.Model(&Room{}).Count(&count).Error; err != nil {
+	if err := second.Model(&domain.Room{}).Count(&count).Error; err != nil {
 		t.Fatal(err)
 	}
 	if count != 0 {
 		t.Fatalf("independent memory database contains %d unexpected rooms", count)
-	}
-}
-
-func TestSQLiteLegacyDatetimeISOFormatting(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "legacy-datetime.db")
-	setup, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, ddl := range []string{
-		"CREATE TABLE rooms (id VARCHAR(36) PRIMARY KEY, code VARCHAR(16), name VARCHAR(255), host_token VARCHAR(255), card_set JSON, revealed BOOLEAN, active_issue_id VARCHAR(36), created_at DATETIME, updated_at DATETIME)",
-		"CREATE TABLE issues (id VARCHAR(36) PRIMARY KEY, room_id VARCHAR(36), title VARCHAR(500), description TEXT, link VARCHAR(2048), position INTEGER, estimate VARCHAR(64), archived_at DATETIME, created_at DATETIME)",
-		"CREATE TABLE participants (id VARCHAR(36) PRIMARY KEY, room_id VARCHAR(36), name VARCHAR(255), token VARCHAR(255), is_spectator BOOLEAN, last_seen_at DATETIME, created_at DATETIME)",
-		"CREATE TABLE votes (id VARCHAR(36) PRIMARY KEY, room_id VARCHAR(36), issue_id VARCHAR(36), participant_id VARCHAR(36), value VARCHAR(64), created_at DATETIME, updated_at DATETIME)",
-	} {
-		if err := setup.Exec(ddl).Error; err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := setup.Exec("INSERT INTO rooms VALUES('r','c','r','h','[]',0,NULL,'2026-03-02 10:20:30.123456','2026-03-02 10:20:30')").Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := setup.Exec("INSERT INTO issues VALUES('i','r','i','','',0,NULL,NULL,'2026-03-02 10:20:30.123456')").Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := setup.Exec("INSERT INTO participants VALUES('p','r','p','t',0,'2026-03-02 10:20:30','2026-03-02 10:20:30')").Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := setup.Exec("INSERT INTO votes VALUES('v','r','i','p','5','2026-03-02 10:20:30.123456','2026-03-02 10:20:30')").Error; err != nil {
-		t.Fatal(err)
-	}
-	if sqlDB, err := setup.DB(); err == nil {
-		_ = sqlDB.Close()
-	}
-	db, err := OpenDatabase(sqliteURL(path))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer closeDatabase(db)
-	var issue Issue
-	if err := db.First(&issue, "id = ?", "i").Error; err != nil {
-		t.Fatal(err)
-	}
-	var vote Vote
-	if err := db.First(&vote, "id = ?", "v").Error; err != nil {
-		t.Fatal(err)
-	}
-	if got := formatISO(issue.CreatedAt); got != "2026-03-02T10:20:30.123456Z" {
-		t.Fatalf("issue timestamp %q", got)
-	}
-	if got := formatISO(vote.CreatedAt); got != "2026-03-02T10:20:30.123456Z" {
-		t.Fatalf("vote timestamp %q", got)
-	}
-	if got := formatISO(vote.UpdatedAt); got != "2026-03-02T10:20:30Z" {
-		t.Fatalf("whole-second timestamp %q", got)
-	}
-}
-
-func TestFormatISO(t *testing.T) {
-	input := time.Date(2026, 3, 2, 12, 20, 30, 123456789, time.FixedZone("offset", 2*60*60))
-	if got := formatISO(input); got != "2026-03-02T10:20:30.123456Z" {
-		t.Fatalf("fractional UTC timestamp %q", got)
-	}
-	whole := time.Date(2026, 3, 2, 10, 20, 30, 0, time.UTC)
-	if got := formatISO(whole); got != "2026-03-02T10:20:30Z" {
-		t.Fatalf("whole-second UTC timestamp %q", got)
-	}
-}
-
-func TestIssueVoteJSONTimestamps(t *testing.T) {
-	now := time.Date(2026, 3, 2, 10, 20, 30, 123456000, time.UTC)
-	issueJSON, err := json.Marshal(Issue{ID: "i", CreatedAt: now})
-	if err != nil {
-		t.Fatal(err)
-	}
-	var issueFields map[string]json.RawMessage
-	if err := json.Unmarshal(issueJSON, &issueFields); err != nil {
-		t.Fatal(err)
-	}
-	var created string
-	if err := json.Unmarshal(issueFields["created_at"], &created); err != nil || created != "2026-03-02T10:20:30.123456Z" {
-		t.Fatalf("issue created_at=%q err=%v", created, err)
-	}
-	if string(issueFields["archived_at"]) != "null" {
-		t.Fatalf("nil archived_at should remain null: %s", issueFields["archived_at"])
-	}
-	archived := now.Add(time.Second)
-	issueJSON, err = json.Marshal(Issue{ID: "i", CreatedAt: now, ArchivedAt: &archived})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := json.Unmarshal(issueJSON, &issueFields); err != nil {
-		t.Fatal(err)
-	}
-	if err := json.Unmarshal(issueFields["archived_at"], &created); err != nil || created != "2026-03-02T10:20:31.123456Z" {
-		t.Fatalf("archived_at=%q err=%v", created, err)
-	}
-	vote, err := json.Marshal(Vote{ID: "v", CreatedAt: now, UpdatedAt: now.Add(time.Second)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	var voteFields map[string]json.RawMessage
-	if err := json.Unmarshal(vote, &voteFields); err != nil {
-		t.Fatal(err)
-	}
-	if err := json.Unmarshal(voteFields["updated_at"], &created); err != nil || created != "2026-03-02T10:20:31.123456Z" {
-		t.Fatalf("vote updated_at=%q err=%v", created, err)
 	}
 }
 
