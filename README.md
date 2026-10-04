@@ -47,15 +47,13 @@ Edit `.env` and set:
 - `PGADMIN_DEFAULT_EMAIL`
 - `PGADMIN_DEFAULT_PASSWORD`
 
-For a new installation, prepare the database first:
+For a new installation, start Docker Compose:
 
 ```bash
-docker compose up -d db
-docker compose exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < ops/database/schema.sql
 docker compose up -d --build
 ```
 
-For an existing installation, use the transfer procedure below instead of `schema.sql`.
+The backend creates its isolated schema and applies versioned SQL migrations through Goose before accepting requests. For an existing installation, follow the transfer procedure below before starting the new backend for users.
 
 This starts:
 
@@ -70,11 +68,11 @@ Health check:
 curl https://sprintpoints.<your-domain>/api/health
 ```
 
-The backend only connects to an existing schema. Starting or rebuilding it does not change the database.
+Schema migrations are automatic; transfer of legacy data is a separate manual operation. The Go backend does not read or copy data from `public` or use Alembic.
 
 ## Transfer an existing PostgreSQL database
 
-The old application tables are in `public`; the new backend uses `sprintpoints`. The transfer script is one SQL `DO` statement: it creates the new schema, copies all four tables, and checks consistency atomically. Room links, IDs, tokens and timestamps are preserved. It leaves `public` and its Alembic metadata untouched. An existing target schema or invalid source data aborts the operation.
+The old application tables are in `public`; the new backend uses `sprintpoints`. Goose creates the target tables and tracks schema versions. The transfer script is one SQL `DO` statement that copies all four tables into an empty, prepared target and checks consistency atomically. Room links, IDs, tokens and timestamps are preserved. It leaves `public`, its Alembic metadata and the target's Goose migration history untouched. Invalid source data or a nonempty target aborts the operation.
 
 1. Stop the old backend and take a backup:
 
@@ -83,16 +81,23 @@ docker compose stop backend
 docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB"' > before-sprintpoints.sql
 ```
 
-2. Run the SQL file once, either in pgAdmin's Query Tool or with:
+2. Set `DATABASE_SCHEMA=sprintpoints` in `.env`. If overriding `DATABASE_URL`, use a standard `postgres://` or `postgresql://` URL. Build the new backend and apply only schema migrations, without opening HTTP:
+
+```bash
+docker compose build backend
+docker compose run --rm --no-deps backend /app/server -migrate
+```
+
+3. Run the transfer once, either in pgAdmin's Query Tool or with:
 
 ```bash
 docker compose exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < ops/database/migrate-from-public.sql
 ```
 
-3. Set `DATABASE_SCHEMA=sprintpoints` in `.env`, use a standard `postgres://` or `postgresql://` URL if you override `DATABASE_URL`, then start the new backend:
+4. Start the backend:
 
 ```bash
-docker compose up -d --build backend
+docker compose up -d backend
 curl https://sprintpoints.<your-domain>/api/health
 ```
 
@@ -131,7 +136,6 @@ npm install
 Run the Go backend locally (Go modules are resolved from `go.mod`):
 
 ```bash
-sqlite3 sprintpoints.sqlite3 < ops/database/sqlite.sql
 export DATABASE_URL=sqlite:///./sprintpoints.sqlite3
 go run ./backend/cmd/server
 ```
@@ -157,7 +161,7 @@ Vite proxies `/api` to `http://127.0.0.1:8000` during development.
 | `VITE_API_URL` | No | Frontend API base URL. Defaults to `/api`. |
 | `VITE_BASE_PATH` | No | Override Vite base path, useful for custom domains. |
 | `DATABASE_URL` | No | PostgreSQL (`postgres://` / `postgresql://`) or SQLite (`sqlite:///`) URL. Compose configures PostgreSQL from `POSTGRES_*`. Defaults to `sqlite:///./sprintpoints.sqlite3`. |
-| `DATABASE_SCHEMA` | No | Prepared PostgreSQL schema; default `sprintpoints`. A single URL `search_path` takes precedence. |
+| `DATABASE_SCHEMA` | No | PostgreSQL schema created and migrated by the backend; default `sprintpoints`. A single URL `search_path` takes precedence. |
 | `LISTEN_ADDR` | No | HTTP listen address, default `:8000`. |
 | `PLANNING_POKER_CORS_ORIGINS` | No | Comma-separated allowed browser origins. Defaults to `*`. |
 | `BASE_DOMAIN` | Yes for Compose | Base domain used by Caddy. `sprintpoints` and `admin` subdomains are created from it. |
@@ -206,7 +210,7 @@ go vet ./...
 
 Runs Go tests (including PostgreSQL integration tests when `TEST_POSTGRES_URL` is set) and static checks. CI runs these with a PostgreSQL service.
 
-Go integration tests cover HTTP behavior, authentication, token privacy, ownership transfer, voting, WebSocket notifications, persisted data and manually executed database SQL. `/openapi.json`, `/docs`, and `/redoc` retain the original API documentation. WebSocket notifications use an in-process registry, so run one backend instance (as in the existing Compose deployment).
+Go integration tests cover HTTP behavior, authentication, token privacy, ownership transfer, voting, WebSocket notifications, persisted data schema migrations and manually executed data transfer SQL. `/openapi.json`, `/docs`, and `/redoc` retain the original API documentation. WebSocket notifications use an in-process registry, so run one backend instance (as in the existing Compose deployment).
 
 ```bash
 npm run dev
@@ -238,9 +242,9 @@ Serves the production frontend build locally.
 │   └── internal/
 │       ├── domain/         # Rooms, participants, issues, votes
 │       ├── httpapi/        # Routes and handlers grouped by feature
-│       ├── storage/        # Database configuration and connections
+│       ├── storage/        # Database connections and versioned SQL migrations
 │       └── realtime/       # Room WebSocket subscriptions and broadcasts
-├── ops/database/           # Manual schema preparation and data transfer SQL
+├── ops/database/           # Manual data transfer SQL
 ├── src/
 │   ├── app/
 │   ├── entities/

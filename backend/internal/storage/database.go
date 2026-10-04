@@ -15,7 +15,7 @@ import (
 
 var schemaNamePattern = regexp.MustCompile(`^[a-z_][a-z0-9_]{0,62}$`)
 
-// OpenDatabase opens a configured database without creating its schema or tables. For
+// OpenDatabase opens the configured database and applies native schema migrations. For
 // PostgreSQL, DATABASE_SCHEMA defaults to sprintpoints; a URL search_path takes precedence.
 func OpenDatabase(rawURL string) (*gorm.DB, error) {
 	schema := ""
@@ -50,6 +50,16 @@ func OpenDatabaseInSchema(rawURL, schema string) (*gorm.DB, error) {
 		if err = db.Exec("PRAGMA foreign_keys = ON").Error; err == nil {
 			err = db.Exec("PRAGMA busy_timeout = 5000").Error
 		}
+	} else {
+		err = db.Transaction(func(tx *gorm.DB) error {
+			if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext(?)::bigint)", "sprintpoints-schema-"+schema).Error; err != nil {
+				return err
+			}
+			return tx.Exec(`CREATE SCHEMA IF NOT EXISTS "` + schema + `"`).Error
+		})
+	}
+	if err == nil {
+		err = migrate(db, dialect)
 	}
 	if err != nil {
 		_ = sqlDB.Close()

@@ -9,11 +9,9 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
 	"github.com/mishannn/sprintpoints/backend/internal/storage"
@@ -35,15 +33,8 @@ func newAPIFixture(t *testing.T) *apiFixture {
 		}
 		t.Cleanup(func() { closeDatabase(admin) })
 		schema := fmt.Sprintf("poker_api_%d", time.Now().UnixNano())
-		ddl, err := os.ReadFile("../../../ops/database/schema.sql")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := admin.Exec(strings.ReplaceAll(string(ddl), "sprintpoints", schema)).Error; err != nil {
-			t.Fatal(err)
-		}
 		t.Cleanup(func() {
-			if err := admin.Exec("DROP SCHEMA " + schema + " CASCADE").Error; err != nil {
+			if err := admin.Exec(`DROP SCHEMA "` + schema + `" CASCADE`).Error; err != nil {
 				t.Error(err)
 			}
 		})
@@ -51,20 +42,6 @@ func newAPIFixture(t *testing.T) *apiFixture {
 		if err != nil {
 			t.Fatal(err)
 		}
-	}
-	if strings.HasPrefix(databaseURL, "sqlite://") {
-		seed, err := gorm.Open(sqlite.Open(strings.TrimPrefix(databaseURL, "sqlite:///")), &gorm.Config{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		ddl, err := os.ReadFile("../../../ops/database/sqlite.sql")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := seed.Exec(string(ddl)).Error; err != nil {
-			t.Fatal(err)
-		}
-		closeDatabase(seed)
 	}
 	db, err := storage.OpenDatabase(databaseURL)
 	if err != nil {

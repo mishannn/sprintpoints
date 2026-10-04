@@ -8,8 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mishannn/sprintpoints/backend/internal/storage"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // Each test substitutes isolated schemas into the exact one-statement script;
@@ -19,7 +21,7 @@ func TestManualPostgresImport(t *testing.T) {
 	if raw == "" {
 		t.Skip("TEST_POSTGRES_URL is not set")
 	}
-	db, err := gorm.Open(postgres.Open(raw), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(raw), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
 		t.Fatal("connect test PostgreSQL:", err)
 	}
@@ -58,7 +60,7 @@ func TestManualPostgresImport(t *testing.T) {
 				`CREATE TABLE alembic_version(version_num varchar(32))`,
 			} {
 				statement = strings.Replace(statement, "CREATE TABLE ", `CREATE TABLE "`+source+`".`, 1)
-				if err := db.Exec(statement).Error; err != nil {
+				if err = db.Exec(statement).Error; err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -78,18 +80,35 @@ func TestManualPostgresImport(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
+			// Run the real Go schema setup before applying the data-only statement.
+			prepared, err := storage.OpenDatabaseInSchema(raw, target)
+			if err != nil {
+				t.Fatal(err)
+			}
+			preparedConn, err := prepared.DB()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := preparedConn.Close(); err != nil {
+				t.Fatal(err)
+			}
+			var ledgerBefore int64
+			if err := db.Table(`"` + target + `".goose_db_version`).Count(&ledgerBefore).Error; err != nil {
+				t.Fatal(err)
+			}
 			statement := strings.ReplaceAll(string(script), "public.", `"`+source+`".`)
 			statement = strings.ReplaceAll(statement, "'sprintpoints'", "'"+target+"'")
 			statement = strings.ReplaceAll(statement, "sprintpoints.", `"`+target+`".`)
-			statement = strings.ReplaceAll(statement, "CREATE SCHEMA sprintpoints;", `CREATE SCHEMA "`+target+`";`)
-			err := db.Exec(statement).Error
+			err = db.Exec(statement).Error
 			if tc.fail {
 				if err == nil {
 					t.Fatal("bad legacy data imported")
 				}
-				var exists bool
-				if e := db.Raw(`SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname=?)`, target).Scan(&exists).Error; e != nil || exists {
-					t.Fatalf("failed import left schema: exists=%t err=%v", exists, e)
+				for _, table := range []string{"rooms", "participants", "issues", "votes"} {
+					var count int64
+					if e := db.Table(`"` + target + `".` + table).Count(&count).Error; e != nil || count != 0 {
+						t.Fatalf("failed import left target %s rows: count=%d err=%v", table, count, e)
+					}
 				}
 			} else {
 				if err != nil {
@@ -106,11 +125,14 @@ func TestManualPostgresImport(t *testing.T) {
 				if room.ID != "r" || room.Code != "ROOM" || room.HostToken != "host-secret" || room.OwnerID != "p" || room.ActiveIssueID != "i" || room.CreatedAt.UTC().Format(time.RFC3339) != "2025-01-02T03:04:05Z" {
 					t.Fatalf("copied room differs: %+v", room)
 				}
-				if e := db.Exec(statement).Error; e == nil || !strings.Contains(e.Error(), "already exists") {
+				if e := db.Exec(statement).Error; e == nil || !strings.Contains(e.Error(), "must be empty") {
 					t.Fatalf("second import accepted: %v", e)
 				}
 			}
 			var count int64
+			if e := db.Table(`"` + target + `".goose_db_version`).Count(&count).Error; e != nil || count != ledgerBefore {
+				t.Fatalf("Goose ledger changed: before=%d after=%d err=%v", ledgerBefore, count, e)
+			}
 			if e := db.Table(`"` + source + `".alembic_version`).Count(&count).Error; e != nil || count != 1 {
 				t.Fatalf("Alembic source changed: count=%d err=%v", count, e)
 			}

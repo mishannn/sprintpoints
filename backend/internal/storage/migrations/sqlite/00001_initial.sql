@@ -1,6 +1,5 @@
--- Explicit setup for a new local SQLite database; do not apply to legacy data.
-PRAGMA foreign_keys = ON;
-BEGIN;
+-- +goose Up
+-- Initial Sprintpoints application schema.
 
 CREATE TABLE rooms (
     id varchar(36) PRIMARY KEY,
@@ -47,4 +46,9 @@ CREATE TABLE votes (
     CONSTRAINT uq_votes_issue_participant UNIQUE(issue_id, participant_id)
 );
 CREATE INDEX votes_room_id_idx ON votes(room_id);
-COMMIT;
+
+-- +goose Down
+DROP TABLE votes;
+DROP TABLE issues;
+DROP TABLE participants;
+DROP TABLE rooms;

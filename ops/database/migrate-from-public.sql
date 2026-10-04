@@ -1,14 +1,11 @@
 -- Execute once against the legacy PostgreSQL database while the old app is
 -- stopped. This entire DO statement is one transaction. PostgreSQL interprets
 -- the legacy Python timestamps as UTC when copying to native timestamptz.
--- It creates a new sprintpoints schema and leaves public, including Alembic,
--- untouched. Rerunning it fails before writing anything.
+-- Run after Go has created and migrated an empty sprintpoints schema. It
+-- leaves public (including Alembic) and the Goose migration ledger untouched.
+-- Rerunning it refuses nonempty target data tables before copying anything.
 DO $import$
 BEGIN
-    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'sprintpoints') THEN
-        RAISE EXCEPTION 'sprintpoints schema already exists; refusing import';
-    END IF;
-
     -- Hold a stable snapshot across validation, copy and verification. SHARE
     -- locks allow readers but block inserts, updates and deletes until commit.
     LOCK TABLE public.rooms, public.participants, public.issues, public.votes IN SHARE MODE;
@@ -40,52 +37,16 @@ BEGIN
         RAISE EXCEPTION 'legacy data has a missing or cross-room reference or empty ID; import refused';
     END IF;
 
-    CREATE SCHEMA sprintpoints;
-    CREATE TABLE sprintpoints.rooms (
-        id varchar(36) PRIMARY KEY,
-        code varchar(16) NOT NULL UNIQUE,
-        name varchar(255) NOT NULL,
-        host_token varchar(255) NOT NULL UNIQUE,
-        owner_id varchar(36),
-        card_set json NOT NULL,
-        revealed boolean NOT NULL,
-        active_issue_id varchar(36),
-        created_at timestamptz NOT NULL,
-        updated_at timestamptz NOT NULL
-    );
-    CREATE TABLE sprintpoints.participants (
-        id varchar(36) PRIMARY KEY,
-        room_id varchar(36) NOT NULL REFERENCES sprintpoints.rooms(id) ON DELETE CASCADE,
-        name varchar(255) NOT NULL,
-        token varchar(255) NOT NULL UNIQUE,
-        is_spectator boolean NOT NULL,
-        last_seen_at timestamptz NOT NULL,
-        created_at timestamptz NOT NULL
-    );
-    CREATE INDEX participants_room_id_idx ON sprintpoints.participants(room_id);
-    CREATE TABLE sprintpoints.issues (
-        id varchar(36) PRIMARY KEY,
-        room_id varchar(36) NOT NULL REFERENCES sprintpoints.rooms(id) ON DELETE CASCADE,
-        title varchar(500) NOT NULL,
-        description text NOT NULL,
-        link varchar(2048) NOT NULL,
-        position integer NOT NULL,
-        estimate varchar(64),
-        archived_at timestamptz,
-        created_at timestamptz NOT NULL
-    );
-    CREATE INDEX issues_room_id_position_idx ON sprintpoints.issues(room_id, position);
-    CREATE TABLE sprintpoints.votes (
-        id varchar(36) PRIMARY KEY,
-        room_id varchar(36) NOT NULL REFERENCES sprintpoints.rooms(id) ON DELETE CASCADE,
-        issue_id varchar(36) NOT NULL REFERENCES sprintpoints.issues(id) ON DELETE CASCADE,
-        participant_id varchar(36) NOT NULL REFERENCES sprintpoints.participants(id) ON DELETE CASCADE,
-        value varchar(64) NOT NULL,
-        created_at timestamptz NOT NULL,
-        updated_at timestamptz NOT NULL,
-        CONSTRAINT uq_votes_issue_participant UNIQUE (issue_id, participant_id)
-    );
-    CREATE INDEX votes_room_id_idx ON sprintpoints.votes(room_id);
+    -- Serialize competing importers and prevent the app from writing while
+    -- checking for an empty target and inserting the source snapshot.
+    LOCK TABLE sprintpoints.rooms, sprintpoints.participants,
+               sprintpoints.issues, sprintpoints.votes IN ACCESS EXCLUSIVE MODE;
+    IF EXISTS (SELECT 1 FROM sprintpoints.rooms)
+       OR EXISTS (SELECT 1 FROM sprintpoints.participants)
+       OR EXISTS (SELECT 1 FROM sprintpoints.issues)
+       OR EXISTS (SELECT 1 FROM sprintpoints.votes) THEN
+        RAISE EXCEPTION 'sprintpoints data tables must be empty; refusing import';
+    END IF;
 
     INSERT INTO sprintpoints.rooms
         (id, code, name, host_token, owner_id, card_set, revealed, active_issue_id, created_at, updated_at)
