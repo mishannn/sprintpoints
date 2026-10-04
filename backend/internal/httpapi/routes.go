@@ -4,18 +4,35 @@ import (
 	"github.com/mishannn/sprintpoints/backend/internal/validation"
 )
 
+// Schemas are application-owned; validation only implements their parsing rules.
+var (
+	issueDetails     = []validation.Field{validation.String("title"), validation.OptionalString("description"), validation.OptionalString("link")}
+	createRoomFields = []validation.Field{
+		validation.String("roomName"),
+		validation.String("participantName"),
+		{Name: "defaults", Kind: "object", Children: []validation.Field{
+			validation.String("facilitatorName"), validation.String("firstStoryTitle"), validation.String("roomName"),
+		}},
+	}
+	importIssueFields = []validation.Field{
+		{Name: "issues", Kind: "array", Children: []validation.Field{
+			validation.String("title"), validation.OptionalString("description"), validation.OptionalString("link"), validation.OptionalString("estimate"),
+		}},
+	}
+)
+
 func (s *Server) routes() {
 	s.route("GET /api/health", 200, nil, s.health)
-	s.route("POST /api/rooms", 201, []validation.Field{validation.String("roomName"), validation.String("participantName"), {Name: "defaults", Kind: "object", Children: []validation.Field{validation.String("facilitatorName"), validation.String("firstStoryTitle"), validation.String("roomName")}}}, s.createRoom)
+	s.route("POST /api/rooms", 201, createRoomFields, s.createRoom)
 	s.route("POST /api/rooms/{code}/join", 201, []validation.Field{validation.String("name"), validation.Boolean("isSpectator")}, s.joinRoom)
 	s.route("GET /api/rooms/{code}", 200, nil, s.loadRoom)
 	s.route("POST /api/rooms/{room}/transfer-ownership", 204, []validation.Field{validation.String("participantId")}, s.transferOwnership)
 	s.route("POST /api/participants/{participant}/heartbeat", 204, nil, s.heartbeat)
 	s.route("PATCH /api/participants/{participant}", 200, []validation.Field{validation.Boolean("isSpectator")}, s.updateParticipant)
 	s.route("DELETE /api/rooms/{room}/participants/{participant}", 204, nil, s.deleteParticipant)
-	s.route("POST /api/rooms/{room}/issues", 201, validation.Details, s.createIssue)
-	s.route("POST /api/rooms/{room}/issues/import", 201, []validation.Field{{Name: "issues", Kind: "array", Children: []validation.Field{validation.String("title"), validation.OptionalString("description"), validation.OptionalString("link"), validation.OptionalString("estimate")}}}, s.importIssues)
-	s.route("PATCH /api/issues/{issue}", 200, validation.Details, s.updateIssue)
+	s.route("POST /api/rooms/{room}/issues", 201, issueDetails, s.createIssue)
+	s.route("POST /api/rooms/{room}/issues/import", 201, importIssueFields, s.importIssues)
+	s.route("PATCH /api/issues/{issue}", 200, issueDetails, s.updateIssue)
 	s.route("DELETE /api/rooms/{room}/issues/{issue}", 204, nil, s.deleteIssue)
 	s.route("PATCH /api/rooms/{room}/issues/{issue}/archive", 200, []validation.Field{validation.Nullable("nextActiveIssueId", true)}, s.archiveIssue)
 	s.route("POST /api/rooms/{room}/issues/archive-estimated", 200, []validation.Field{validation.Nullable("nextActiveIssueId", true)}, s.archiveEstimatedIssues)

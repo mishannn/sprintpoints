@@ -24,9 +24,6 @@ func Nullable(name string, optional bool) Field {
 	return Field{Name: name, Kind: "string", Optional: optional, Nullable: true}
 }
 
-// Details is the shared title/description/link schema used by issue endpoints.
-var Details = []Field{String("title"), OptionalString("description"), OptionalString("link")}
-
 func validation(typ, msg string, loc []any, input any) map[string]any {
 	return map[string]any{"type": typ, "loc": loc, "msg": msg, "input": input}
 }
