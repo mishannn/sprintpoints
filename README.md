@@ -66,7 +66,7 @@ Health check:
 curl https://sprintpoints.<your-domain>/api/health
 ```
 
-The Go backend applies its schema migrations on startup, so `docker compose up -d --build` applies the current schema without a manual step. Go retains the existing Alembic revision identifiers in the database and remains compatible with databases created by the former Python backend. The historical Python implementation and migration scripts are available in Git history. Back up production data before deploying a backend migration.
+The Go backend applies its schema migrations on startup, so `docker compose up -d --build` applies the current schema without a manual step. Go retains the existing Alembic revision identifiers in the database and remains compatible with databases created by the former Python backend. Back up production data before deploying a backend migration.
 
 ## Database Admin UI
 
@@ -174,7 +174,7 @@ go vet ./...
 
 Runs Go tests (including PostgreSQL integration tests when `TEST_POSTGRES_URL` is set) and static checks. CI runs these with a PostgreSQL service.
 
-HTTP contract regression tests use frozen responses captured from the former Python backend, so testing requires no Python installation. Go tests also cover authentication, token privacy, ownership transfer, voting, WebSocket notifications, and legacy database migrations. `/openapi.json`, `/docs`, and `/redoc` retain the original API documentation. WebSocket notifications use an in-process registry, so run one backend instance (as in the existing Compose deployment).
+HTTP contract regression tests use frozen reference responses to protect established behavior. Go tests also cover authentication, token privacy, ownership transfer, voting, WebSocket notifications, and legacy database migrations. `/openapi.json`, `/docs`, and `/redoc` retain the original API documentation. WebSocket notifications use an in-process registry, so run one backend instance (as in the existing Compose deployment).
 
 ```bash
 npm run dev
