@@ -17,6 +17,7 @@ func TestTypedJSONBinding(t *testing.T) {
 		{"missing nested field", "/api/rooms", `{"roomName":"Test","participantName":"Owner","defaults":{"roomName":"Fallback","facilitatorName":"Facilitator"}}`},
 		{"missing boolean", "/api/rooms/" + code + "/join", `{"name":"Member"}`},
 		{"invalid boolean", "/api/rooms/" + code + "/join", `{"name":"Member","isSpectator":1}`},
+		{"missing imported title", "/api/rooms/" + code + "/issues/import", `{"issues":[{"title":"Valid"},{}]}`},
 		{"null required title", "/api/rooms/" + code + "/issues", `{"title":null}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

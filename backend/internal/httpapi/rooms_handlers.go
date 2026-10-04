@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"crypto/rand"
+	"math/big"
 	"strings"
 
 	"github.com/mishannn/sprintpoints/backend/internal/domain"
@@ -33,16 +34,9 @@ func (s *Server) createRoom(q *request) any {
 	for attempt := 0; attempt < 20; attempt++ {
 		b := make([]byte, 6)
 		for i := range b {
-			for {
-				x := make([]byte, 1)
-				_, err := rand.Read(x)
-				must(err)
-				// Reject the remainder to keep all 36 code characters equally likely.
-				if x[0] < 252 {
-					b[i] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"[int(x[0])%36]
-					break
-				}
-			}
+			n, err := rand.Int(rand.Reader, big.NewInt(36))
+			must(err)
+			b[i] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"[n.Int64()]
 		}
 		candidate := string(b)
 		var n int64

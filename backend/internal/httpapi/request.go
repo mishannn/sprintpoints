@@ -30,7 +30,11 @@ func (s *Server) route(method, path string, status int, fn func(*request) any) {
 	s.router.Handle(method, path, func(c *gin.Context) {
 		q := &request{context: c}
 		var result any
-		err := s.db.WithContext(c.Request.Context()).Transaction(func(tx *gorm.DB) error { q.tx = tx; result = fn(q); return nil })
+		err := s.db.WithContext(c.Request.Context()).Transaction(func(tx *gorm.DB) error {
+			q.tx = tx
+			result = fn(q)
+			return nil
+		})
 		must(err)
 		if status == http.StatusNoContent {
 			c.Status(status)

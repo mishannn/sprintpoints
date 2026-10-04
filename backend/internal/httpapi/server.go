@@ -32,7 +32,12 @@ func NewServer(db *gorm.DB, origins []string) *Server {
 		log.Print("internal request failure")
 		c.String(http.StatusInternalServerError, "Internal Server Error")
 	}))
-	config := cors.Config{AllowOrigins: origins, AllowMethods: []string{"GET", "HEAD", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"}, AllowHeaders: []string{"Origin", "Content-Type", "X-Host-Token", "X-Participant-Token"}, MaxAge: 10 * time.Minute}
+	config := cors.Config{
+		AllowOrigins: origins,
+		AllowMethods: []string{"GET", "HEAD", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders: []string{"Origin", "Content-Type", "X-Host-Token", "X-Participant-Token"},
+		MaxAge:       10 * time.Minute,
+	}
 	if len(origins) == 0 {
 		config.AllowOriginFunc = func(string) bool { return false }
 	}

@@ -12,7 +12,7 @@ type issueBody struct {
 	Link        string  `json:"link"`
 }
 type importIssuesBody struct {
-	Issues []importIssueBody `json:"issues" binding:"required"`
+	Issues []importIssueBody `json:"issues" binding:"required,dive"`
 }
 type importIssueBody struct {
 	Title       *string `json:"title" binding:"required"`
