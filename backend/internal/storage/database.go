@@ -3,6 +3,8 @@ package storage
 import (
 	"fmt"
 	"net/url"
+	"os"
+	"regexp"
 	"strings"
 
 	"gorm.io/driver/postgres"
@@ -11,88 +13,95 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-// OpenDatabase opens the configured GORM database and applies known schema revisions.
-func OpenDatabase(databaseURL string) (*gorm.DB, error) {
-	dialector, dialect, err := openDialector(databaseURL)
+var schemaNamePattern = regexp.MustCompile(`^[a-z_][a-z0-9_]{0,62}$`)
+
+// OpenDatabase opens a configured database without creating its schema or tables. For
+// PostgreSQL, DATABASE_SCHEMA defaults to sprintpoints; a URL search_path takes precedence.
+func OpenDatabase(rawURL string) (*gorm.DB, error) {
+	schema := ""
+	if strings.HasPrefix(rawURL, "postgres://") || strings.HasPrefix(rawURL, "postgresql://") {
+		if parsed, err := url.Parse(rawURL); err == nil {
+			schema = parsed.Query().Get("search_path")
+		}
+	}
+	if schema == "" {
+		schema = envSchema()
+	}
+	return OpenDatabaseInSchema(rawURL, schema)
+}
+
+// OpenDatabaseInSchema explicitly chooses the isolated PostgreSQL target schema.
+func OpenDatabaseInSchema(rawURL, schema string) (*gorm.DB, error) {
+	dialector, dialect, schema, err := openDialector(rawURL, schema)
 	if err != nil {
 		return nil, err
 	}
 	db, err := gorm.Open(dialector, &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
+		return nil, err
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
 		closeDatabase(db)
 		return nil, err
 	}
 	if dialect == "sqlite" {
-		sqlDB, e := db.DB()
-		if e != nil {
-			closeDatabase(db)
-			return nil, e
-		}
 		sqlDB.SetMaxOpenConns(1)
-		if err = db.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
-			_ = sqlDB.Close()
-			return nil, err
-		}
-		if err = db.Exec("PRAGMA busy_timeout = 5000").Error; err != nil {
-			_ = sqlDB.Close()
-			return nil, err
+		if err = db.Exec("PRAGMA foreign_keys = ON").Error; err == nil {
+			err = db.Exec("PRAGMA busy_timeout = 5000").Error
 		}
 	}
-	if err = migrate(db, dialect); err != nil {
-		closeDatabase(db)
+	if err != nil {
+		_ = sqlDB.Close()
 		return nil, err
 	}
 	return db, nil
 }
 
-func openDialector(raw string) (gorm.Dialector, string, error) {
-	u := raw
-	if strings.HasPrefix(u, "sqlite+pysqlite://") {
-		u = strings.Replace(u, "sqlite+pysqlite://", "sqlite://", 1)
+func envSchema() string {
+	if s := strings.TrimSpace(os.Getenv("DATABASE_SCHEMA")); s != "" {
+		return s
 	}
-	if strings.HasPrefix(u, "sqlite://") {
-		path := strings.TrimPrefix(u, "sqlite://")
+	return "sprintpoints"
+}
+
+func openDialector(raw, schema string) (gorm.Dialector, string, string, error) {
+	if strings.HasPrefix(raw, "sqlite://") {
+		path := strings.TrimPrefix(raw, "sqlite://")
 		query := ""
 		if i := strings.IndexByte(path, '?'); i >= 0 {
 			query, path = path[i+1:], path[:i]
 		}
-		if strings.HasPrefix(path, "//") { // sqlite:////absolute/path
+		if strings.HasPrefix(path, "//") {
 			path = path[1:]
-		} else if strings.HasPrefix(path, "/") { // sqlite:///relative/path
+		} else if strings.HasPrefix(path, "/") {
 			path = strings.TrimPrefix(path, "/")
 		}
-		query = appendQuery(query, "_foreign_keys=on&_busy_timeout=5000")
-		if query != "" {
-			path += "?" + query
+		q, _ := url.ParseQuery(query)
+		q.Set("_foreign_keys", "on")
+		q.Set("_busy_timeout", "5000")
+		return sqlite.Open(path + "?" + q.Encode()), "sqlite", "", nil
+	}
+	if strings.HasPrefix(raw, "postgres://") || strings.HasPrefix(raw, "postgresql://") {
+		if schema == "" {
+			schema = envSchema()
 		}
-		return sqlite.Open(path), "sqlite", nil
-	}
-	if strings.HasPrefix(u, "postgresql+psycopg://") {
-		u = strings.Replace(u, "postgresql+psycopg://", "postgres://", 1)
-	}
-	if strings.HasPrefix(u, "postgresql://") {
-		u = strings.Replace(u, "postgresql://", "postgres://", 1)
-	}
-	if strings.HasPrefix(u, "postgres://") {
-		parsed, err := url.Parse(u)
+		if !schemaNamePattern.MatchString(schema) || schema == "public" || strings.HasPrefix(schema, "pg_") {
+			return nil, "", "", fmt.Errorf("invalid DATABASE_SCHEMA %q: use a lowercase identifier, excluding public and pg_* schemas", schema)
+		}
+		u, err := url.Parse(raw)
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
-		q := parsed.Query()
+		q := u.Query()
+		q.Set("search_path", schema)
 		if q.Get("timezone") == "" {
 			q.Set("timezone", "UTC")
 		}
-		parsed.RawQuery = q.Encode()
-		return postgres.Open(parsed.String()), "postgres", nil
+		u.RawQuery = q.Encode()
+		return postgres.Open(u.String()), "postgres", schema, nil
 	}
-	return nil, "", fmt.Errorf("unsupported database URL scheme")
-}
-
-func appendQuery(existing, extra string) string {
-	if existing == "" {
-		return extra
-	}
-	return existing + "&" + extra
+	return nil, "", "", fmt.Errorf("unsupported database URL scheme")
 }
 
 func closeDatabase(db *gorm.DB) {

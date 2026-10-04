@@ -3,9 +3,9 @@ package httpapi
 import (
 	"errors"
 
-	"github.com/mishannn/sprintpoints/backend/internal/domain"
-
 	"gorm.io/gorm"
+
+	"github.com/mishannn/sprintpoints/backend/internal/domain"
 )
 
 func findRoom(db *gorm.DB, id string) domain.Room {

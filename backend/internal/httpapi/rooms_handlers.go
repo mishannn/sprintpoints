@@ -7,7 +7,26 @@ import (
 	"github.com/mishannn/sprintpoints/backend/internal/domain"
 )
 
+type createRoomBody struct {
+	RoomName        *string `json:"roomName" binding:"required"`
+	ParticipantName *string `json:"participantName" binding:"required"`
+	Defaults        struct {
+		FacilitatorName *string `json:"facilitatorName" binding:"required"`
+		FirstStoryTitle *string `json:"firstStoryTitle" binding:"required"`
+		RoomName        *string `json:"roomName" binding:"required"`
+	} `json:"defaults" binding:"required"`
+}
+type joinRoomBody struct {
+	Name        *string `json:"name" binding:"required"`
+	IsSpectator *bool   `json:"isSpectator" binding:"required"`
+}
+type transferOwnershipBody struct {
+	ParticipantID *string `json:"participantId" binding:"required"`
+}
+
 func (s *Server) createRoom(q *request) any {
+	var body createRoomBody
+	q.bind(&body)
 	t := nowUTC()
 	rid, pid, iid := newID(), newID(), newID()
 	code := ""
@@ -36,18 +55,17 @@ func (s *Server) createRoom(q *request) any {
 	if code == "" {
 		fail(503, "roomCodeUnavailable")
 	}
-	defaults := q.data["defaults"].(map[string]any)
-	name := strings.TrimSpace(q.string("roomName"))
+	name := strings.TrimSpace(*body.RoomName)
 	if name == "" {
-		name = stringValue(defaults, "roomName")
+		name = *body.Defaults.RoomName
 	}
-	pn := strings.TrimSpace(q.string("participantName"))
+	pn := strings.TrimSpace(*body.ParticipantName)
 	if pn == "" {
-		pn = stringValue(defaults, "facilitatorName")
+		pn = *body.Defaults.FacilitatorName
 	}
-	r := domain.Room{ID: rid, Code: code, Name: name, HostToken: newToken(), OwnerID: &pid, CardSet: domain.JSONStrings{"0", "1", "2", "3", "5", "8", "13", "21", "?", "Coffee"}, ActiveIssueID: &iid, CreatedAt: t, UpdatedAt: t}
+	r := domain.Room{ID: rid, Code: code, Name: name, HostToken: newToken(), OwnerID: &pid, CardSet: []string{"0", "1", "2", "3", "5", "8", "13", "21", "?", "Coffee"}, ActiveIssueID: &iid, CreatedAt: t, UpdatedAt: t}
 	p := domain.Participant{ID: pid, RoomID: rid, Name: pn, Token: newToken(), LastSeenAt: t, CreatedAt: t}
-	i := domain.Issue{ID: iid, RoomID: rid, Title: stringValue(defaults, "firstStoryTitle"), Position: 1, CreatedAt: t}
+	i := domain.Issue{ID: iid, RoomID: rid, Title: *body.Defaults.FirstStoryTitle, Position: 1, CreatedAt: t}
 	must(q.tx.Create(&r).Error)
 	must(q.tx.Create(&p).Error)
 	must(q.tx.Create(&i).Error)
@@ -56,26 +74,30 @@ func (s *Server) createRoom(q *request) any {
 }
 
 func (s *Server) joinRoom(q *request) any {
-	if normalizeRoomCode(q.path("code")) == "" || strings.TrimSpace(q.string("name")) == "" {
+	var body joinRoomBody
+	q.bind(&body)
+	if normalizeRoomCode(q.path("room")) == "" || strings.TrimSpace(*body.Name) == "" {
 		fail(400, "joinRoomRequired")
 	}
-	r := findRoomByCode(q.tx, q.path("code"))
+	r := findRoomByCode(q.tx, q.path("room"))
 	t := nowUTC()
-	p := domain.Participant{ID: newID(), RoomID: r.ID, Name: strings.TrimSpace(q.string("name")), Token: newToken(), IsSpectator: q.data["isSpectator"].(bool), LastSeenAt: t, CreatedAt: t}
+	p := domain.Participant{ID: newID(), RoomID: r.ID, Name: strings.TrimSpace(*body.Name), Token: newToken(), IsSpectator: *body.IsSpectator, LastSeenAt: t, CreatedAt: t}
 	must(q.tx.Create(&p).Error)
 	q.notifyRoom(r.ID)
 	return map[string]any{"room": roomJSON(r, false), "participant": participantJSON(p, p.Token), "participantToken": p.Token}
 }
 
 func (s *Server) loadRoom(q *request) any {
-	r := findRoomByCode(q.tx, q.path("code"))
+	r := findRoomByCode(q.tx, q.path("room"))
 	requireMember(q.tx, r, q.participantToken(), q.hostToken())
 	return roomState(q.tx, r, q.participantToken(), q.hostToken())
 }
 
 func (s *Server) transferOwnership(q *request) any {
+	var body transferOwnershipBody
+	q.bind(&body)
 	r := requireHost(q.tx, q.path("room"), q.hostToken())
-	p := findParticipant(q.tx, q.string("participantId"))
+	p := findParticipant(q.tx, *body.ParticipantID)
 	if p.RoomID != r.ID {
 		fail(404, "participantNotFound")
 	}

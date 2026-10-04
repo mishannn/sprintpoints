@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mishannn/sprintpoints/backend/internal/domain"
-	"github.com/mishannn/sprintpoints/backend/internal/storage"
-
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+
+	"github.com/mishannn/sprintpoints/backend/internal/domain"
+	"github.com/mishannn/sprintpoints/backend/internal/storage"
 )
 
 // legacyPythonSQL is a frozen dump from the Python API's SQLite database after
@@ -32,7 +32,7 @@ const (
 	legacyOwnerToken  = "legacy-owner-token"
 )
 
-func TestGoOpensFrozenPythonCreatedDatabase(t *testing.T) {
+func TestPersistedDatabasePreservesAPIState(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "legacy-python.sqlite")
 	seed, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
 	if err != nil {
@@ -61,7 +61,7 @@ func TestGoOpensFrozenPythonCreatedDatabase(t *testing.T) {
 	assertLegacyPythonAPI(t, db)
 	closeLegacyTestDB(t, db)
 
-	// Migrate once more after a process-like reopen and check the same records
+	// Reopen the prepared database and check the same records
 	// through a fresh HTTP handler.
 	reopened, err := storage.OpenDatabase(sqliteURL(path))
 	if err != nil {

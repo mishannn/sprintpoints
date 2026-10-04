@@ -1,9 +1,9 @@
 package httpapi
 
 import (
-	"github.com/mishannn/sprintpoints/backend/internal/domain"
-
 	"gorm.io/gorm"
+
+	"github.com/mishannn/sprintpoints/backend/internal/domain"
 )
 
 func roomJSON(r domain.Room, reveal bool) map[string]any {
@@ -11,14 +11,14 @@ func roomJSON(r domain.Room, reveal bool) map[string]any {
 	if reveal {
 		t = r.HostToken
 	}
-	return map[string]any{"id": r.ID, "code": r.Code, "name": r.Name, "host_token": t, "owner_id": r.OwnerID, "card_set": r.CardSet, "revealed": r.Revealed, "active_issue_id": r.ActiveIssueID, "created_at": domain.FormatTimestamp(r.CreatedAt), "updated_at": domain.FormatTimestamp(r.UpdatedAt)}
+	return map[string]any{"id": r.ID, "code": r.Code, "name": r.Name, "host_token": t, "owner_id": r.OwnerID, "card_set": r.CardSet, "revealed": r.Revealed, "active_issue_id": r.ActiveIssueID, "created_at": r.CreatedAt, "updated_at": r.UpdatedAt}
 }
 func participantJSON(p domain.Participant, t string) map[string]any {
 	visible := ""
 	if tokensEqual(t, p.Token) {
 		visible = p.Token
 	}
-	return map[string]any{"id": p.ID, "room_id": p.RoomID, "name": p.Name, "token": visible, "is_spectator": p.IsSpectator, "last_seen_at": domain.FormatTimestamp(p.LastSeenAt), "created_at": domain.FormatTimestamp(p.CreatedAt)}
+	return map[string]any{"id": p.ID, "room_id": p.RoomID, "name": p.Name, "token": visible, "is_spectator": p.IsSpectator, "last_seen_at": p.LastSeenAt, "created_at": p.CreatedAt}
 }
 
 // A participant sees only their own credential; the owner may also recover

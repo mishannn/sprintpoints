@@ -9,9 +9,15 @@ func (s *Server) heartbeat(q *request) any {
 	return nil
 }
 
+type updateParticipantBody struct {
+	IsSpectator *bool `json:"isSpectator" binding:"required"`
+}
+
 func (s *Server) updateParticipant(q *request) any {
+	var body updateParticipantBody
+	q.bind(&body)
 	p := requireParticipant(q.tx, q.path("participant"), q.participantToken())
-	p.IsSpectator = q.data["isSpectator"].(bool)
+	p.IsSpectator = *body.IsSpectator
 	if p.IsSpectator {
 		r := findRoom(q.tx, p.RoomID)
 		if r.ActiveIssueID != nil {

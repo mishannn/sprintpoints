@@ -18,7 +18,7 @@ The app uses a React/Vite frontend and a Go backend backed by PostgreSQL in Dock
 
 - Frontend: React, TypeScript, Vite
 - UI: Mantine, lucide-react icons
-- Backend: Go 1.24, GORM, SQLite/PostgreSQL
+- Backend: Go 1.24, Gin, GORM, Gorilla WebSocket, SQLite/PostgreSQL
 
 ## Requirements
 
@@ -47,11 +47,15 @@ Edit `.env` and set:
 - `PGADMIN_DEFAULT_EMAIL`
 - `PGADMIN_DEFAULT_PASSWORD`
 
-Start Docker Compose:
+For a new installation, prepare the database first:
 
 ```bash
+docker compose up -d db
+docker compose exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < ops/database/schema.sql
 docker compose up -d --build
 ```
+
+For an existing installation, use the transfer procedure below instead of `schema.sql`.
 
 This starts:
 
@@ -66,7 +70,33 @@ Health check:
 curl https://sprintpoints.<your-domain>/api/health
 ```
 
-The Go backend applies its schema migrations on startup, so `docker compose up -d --build` applies the current schema without a manual step. Go retains the existing Alembic revision identifiers in the database and remains compatible with databases created by the former Python backend. Back up production data before deploying a backend migration.
+The backend only connects to an existing schema. Starting or rebuilding it does not change the database.
+
+## Transfer an existing PostgreSQL database
+
+The old application tables are in `public`; the new backend uses `sprintpoints`. The transfer script is one SQL `DO` statement: it creates the new schema, copies all four tables, and checks consistency atomically. Room links, IDs, tokens and timestamps are preserved. It leaves `public` and its Alembic metadata untouched. An existing target schema or invalid source data aborts the operation.
+
+1. Stop the old backend and take a backup:
+
+```bash
+docker compose stop backend
+docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB"' > before-sprintpoints.sql
+```
+
+2. Run the SQL file once, either in pgAdmin's Query Tool or with:
+
+```bash
+docker compose exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < ops/database/migrate-from-public.sql
+```
+
+3. Set `DATABASE_SCHEMA=sprintpoints` in `.env`, use a standard `postgres://` or `postgresql://` URL if you override `DATABASE_URL`, then start the new backend:
+
+```bash
+docker compose up -d --build backend
+curl https://sprintpoints.<your-domain>/api/health
+```
+
+Check an existing room with its saved host/participant credentials. Keep the old schema and backup until the new deployment has been verified. To roll back before accepting new writes, stop the new backend and restore the previous backend image/configuration pointing at `public`. Once new writes have occurred, restoring the old backend requires a separate data reconciliation; the old schema is only a snapshot.
 
 ## Database Admin UI
 
@@ -101,7 +131,8 @@ npm install
 Run the Go backend locally (Go modules are resolved from `go.mod`):
 
 ```bash
-export DATABASE_URL=sqlite:///./planningpoker.sqlite3
+sqlite3 sprintpoints.sqlite3 < ops/database/sqlite.sql
+export DATABASE_URL=sqlite:///./sprintpoints.sqlite3
 go run ./backend/cmd/server
 ```
 
@@ -125,7 +156,8 @@ Vite proxies `/api` to `http://127.0.0.1:8000` during development.
 | --- | --- | --- |
 | `VITE_API_URL` | No | Frontend API base URL. Defaults to `/api`. |
 | `VITE_BASE_PATH` | No | Override Vite base path, useful for custom domains. |
-| `DATABASE_URL` | No | PostgreSQL (`postgres://` / `postgresql://` / legacy `postgresql+psycopg://`) or SQLite (`sqlite:///` / legacy `sqlite+pysqlite:///`) URL. Compose configures PostgreSQL from `POSTGRES_*`. Defaults to `sqlite:///./planningpoker.sqlite3`. |
+| `DATABASE_URL` | No | PostgreSQL (`postgres://` / `postgresql://`) or SQLite (`sqlite:///`) URL. Compose configures PostgreSQL from `POSTGRES_*`. Defaults to `sqlite:///./sprintpoints.sqlite3`. |
+| `DATABASE_SCHEMA` | No | Prepared PostgreSQL schema; default `sprintpoints`. A single URL `search_path` takes precedence. |
 | `LISTEN_ADDR` | No | HTTP listen address, default `:8000`. |
 | `PLANNING_POKER_CORS_ORIGINS` | No | Comma-separated allowed browser origins. Defaults to `*`. |
 | `BASE_DOMAIN` | Yes for Compose | Base domain used by Caddy. `sprintpoints` and `admin` subdomains are created from it. |
@@ -137,7 +169,7 @@ Vite proxies `/api` to `http://127.0.0.1:8000` during development.
 
 ## Backend
 
-The Go backend separates domain entities, HTTP handlers, persistence, request validation, and realtime notifications. See [backend/README.md](backend/README.md) for package responsibilities and request flow. SQLite and PostgreSQL share the same domain models and API contract.
+The Go backend separates domain entities, HTTP handlers, persistence and realtime notifications. See [backend/README.md](backend/README.md) for package responsibilities and request flow. SQLite and PostgreSQL share the same domain models and API contract.
 
 Main tables:
 
@@ -174,7 +206,7 @@ go vet ./...
 
 Runs Go tests (including PostgreSQL integration tests when `TEST_POSTGRES_URL` is set) and static checks. CI runs these with a PostgreSQL service.
 
-HTTP contract regression tests use frozen reference responses to protect established behavior. Go tests also cover authentication, token privacy, ownership transfer, voting, WebSocket notifications, and legacy database migrations. `/openapi.json`, `/docs`, and `/redoc` retain the original API documentation. WebSocket notifications use an in-process registry, so run one backend instance (as in the existing Compose deployment).
+Go integration tests cover HTTP behavior, authentication, token privacy, ownership transfer, voting, WebSocket notifications, persisted data and manually executed database SQL. `/openapi.json`, `/docs`, and `/redoc` retain the original API documentation. WebSocket notifications use an in-process registry, so run one backend instance (as in the existing Compose deployment).
 
 ```bash
 npm run dev
@@ -206,9 +238,9 @@ Serves the production frontend build locally.
 │   └── internal/
 │       ├── domain/         # Rooms, participants, issues, votes
 │       ├── httpapi/        # Routes and handlers grouped by feature
-│       ├── storage/        # Database configuration, schema and migrations
-│       ├── validation/     # Request schemas, coercion and JSON errors
+│       ├── storage/        # Database configuration and connections
 │       └── realtime/       # Room WebSocket subscriptions and broadcasts
+├── ops/database/           # Manual schema preparation and data transfer SQL
 ├── src/
 │   ├── app/
 │   ├── entities/
