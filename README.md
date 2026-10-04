@@ -18,7 +18,6 @@ The app uses a React/Vite frontend and a Go backend backed by PostgreSQL in Dock
 
 - Frontend: React, TypeScript, Vite
 - UI: Mantine, lucide-react icons
-- CSV import/export: Papa Parse
 - Backend: Go 1.24, Gin, GORM, Gorilla WebSocket, SQLite/PostgreSQL
 
 ## Requirements
@@ -230,12 +229,6 @@ npm run preview
 ```
 
 Serves the production frontend build locally.
-
-CSV import/export regression checks:
-
-```bash
-npm run test:frontend-csv
-```
 
 ## Project Structure
 
