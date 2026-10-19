@@ -40,6 +40,7 @@ export type PendingSync = {
   archiveIssueId: string | null;
   editIssueId: string | null;
   deleteIssueId: string | null;
+  deleteIssues: boolean;
   deleteParticipantId: string | null;
   transferOwnershipId: string | null;
   observerMode: boolean;
@@ -58,6 +59,7 @@ const idlePendingSync: PendingSync = {
   archiveIssueId: null,
   editIssueId: null,
   deleteIssueId: null,
+  deleteIssues: false,
   deleteParticipantId: null,
   transferOwnershipId: null,
   observerMode: false,
@@ -551,6 +553,70 @@ export function useRoomSession() {
     }
   }, [hostToken, isHost, loadRoom, setPending, showError, state, t]);
 
+  const deleteIssues = useCallback(async (issuesToDelete: Issue[]) => {
+    if (!state || !isHost || !hostToken) {
+      return false;
+    }
+
+    const uniqueIssues = [...new Map(issuesToDelete.map((issue) => [issue.id, issue])).values()];
+    if (uniqueIssues.length === 0) {
+      return false;
+    }
+
+    const deletedIssueIds = new Set(uniqueIssues.map((issue) => issue.id));
+    const currentActiveIssueId = state.room.active_issue_id;
+    const isDeletingActiveIssue = Boolean(currentActiveIssueId && deletedIssueIds.has(currentActiveIssueId));
+    const currentActiveIssues = state.issues.filter((issue) => !issue.archived_at);
+    const activeIssueIndex = currentActiveIssues.findIndex((issue) => issue.id === currentActiveIssueId);
+    const nextIssue =
+      isDeletingActiveIssue && activeIssueIndex >= 0
+        ? currentActiveIssues.slice(activeIssueIndex + 1).find((issue) => !deletedIssueIds.has(issue.id)) ??
+          [...currentActiveIssues.slice(0, activeIssueIndex)].reverse().find((issue) => !deletedIssueIds.has(issue.id)) ??
+          null
+        : null;
+    const nextActiveIssueId = isDeletingActiveIssue ? nextIssue?.id ?? null : currentActiveIssueId;
+
+    setNotice(null);
+    setPending({ deleteIssues: true });
+    setState((current) =>
+      current
+        ? {
+            ...current,
+            room: isDeletingActiveIssue
+              ? { ...current.room, active_issue_id: nextActiveIssueId, revealed: false }
+              : current.room,
+            issues: current.issues.filter((issue) => !deletedIssueIds.has(issue.id)),
+            votes: current.votes.filter((vote) => !deletedIssueIds.has(vote.issue_id)),
+          }
+        : current,
+    );
+
+    try {
+      for (const issue of uniqueIssues) {
+        await deleteIssueRequest(
+          state.room.id,
+          issue.id,
+          hostToken,
+          isDeletingActiveIssue && issue.id === currentActiveIssueId ? nextActiveIssueId : undefined,
+        );
+      }
+      await loadRoom(state.room.code);
+      return true;
+    } catch (error) {
+      // Deletions are sequential, so a failure can happen after some stories
+      // were already removed. Resync instead of restoring an outdated snapshot.
+      try {
+        await loadRoom(state.room.code);
+      } catch {
+        // Keep the optimistic state if the room cannot be reloaded.
+      }
+      showError(error, t("error.deleteStories"));
+      return false;
+    } finally {
+      setPending({ deleteIssues: false });
+    }
+  }, [hostToken, isHost, loadRoom, setPending, showError, state, t]);
+
   const deleteParticipant = useCallback(async (participant: Participant) => {
     if (!state || !isHost || !hostToken || participant.id === currentParticipant?.id) {
       return;
@@ -911,6 +977,7 @@ export function useRoomSession() {
     addIssue,
     editIssue,
     deleteIssue,
+    deleteIssues,
     deleteParticipant,
     transferOwnership,
     switchObserverMode,

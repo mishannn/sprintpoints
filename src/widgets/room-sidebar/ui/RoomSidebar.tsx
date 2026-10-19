@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ActionIcon, Badge, Box, Button, Center, Group, Loader, Modal, Paper, ScrollArea, Stack, Text, Title, Tooltip, UnstyledButton } from "@mantine/core";
-import { Archive, ArchiveRestore, Crown, Download, ExternalLink, Pencil, Plus, Settings, Trash2, Upload, Users } from "lucide-react";
+import { Archive, ArchiveRestore, Crown, Download, ExternalLink, Maximize2, Pencil, Plus, Settings, Trash2, Upload, Users } from "lucide-react";
 import type { Issue, Participant, Vote } from "../../../entities/room/model/types";
 import type { IssueDetailsInput, IssueImportInput } from "../../../features/manage-issues/model/issues";
 import { downloadJiraCsv } from "../../../features/manage-issues/model/jiraCsv";
@@ -8,6 +8,7 @@ import type { PendingSync } from "../../../features/room-session/model/useRoomSe
 import { useI18n } from "../../../shared/i18n";
 import { AddIssueModal } from "./AddIssueModal";
 import { ImportIssuesModal } from "./ImportIssuesModal";
+import { IssuesOverlay } from "./IssuesOverlay";
 
 type RoomSidebarProps = {
   activeIssue: Issue | null;
@@ -25,6 +26,7 @@ type RoomSidebarProps = {
   onArchiveEstimatedIssues: () => Promise<void>;
   onArchiveIssue: (issue: Issue) => Promise<void>;
   onDeleteIssue: (issue: Issue) => Promise<void>;
+  onDeleteIssues: (issues: Issue[]) => Promise<boolean>;
   onDeleteParticipant: (participant: Participant) => Promise<void>;
   onTransferOwnership: (participant: Participant) => Promise<void>;
   onEditIssue: (issue: Issue, details: IssueDetailsInput) => Promise<boolean>;
@@ -52,6 +54,7 @@ export function RoomSidebar({
   onArchiveEstimatedIssues,
   onArchiveIssue,
   onDeleteIssue,
+  onDeleteIssues,
   onDeleteParticipant,
   onTransferOwnership,
   onEditIssue,
@@ -62,6 +65,7 @@ export function RoomSidebar({
   const [isAddIssueOpen, setIsAddIssueOpen] = useState(false);
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [isImportIssuesOpen, setIsImportIssuesOpen] = useState(false);
+  const [isIssuesOverlayOpen, setIsIssuesOverlayOpen] = useState(false);
   const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
   const estimatedIssuesCount = issues.filter((issue) => issue.estimate).length;
 
@@ -215,26 +219,38 @@ export function RoomSidebar({
                 {t("label.stories")}
               </Title>
             </Group>
-          {isHost ? (
-              <Group gap={8}>
-                <Tooltip label={t("action.import")}>
-                  <ActionIcon variant="default" type="button" onClick={() => setIsImportIssuesOpen(true)} aria-label={t("action.import")}>
-                    <Upload size={17} aria-hidden="true" />
-                  </ActionIcon>
-                </Tooltip>
-                <Tooltip label={t("action.export")}>
-                  <ActionIcon
-                    variant="default"
-                    type="button"
-                    onClick={() => downloadJiraCsv(issues, roomName)}
-                    disabled={issues.length === 0}
-                    aria-label={t("action.export")}
-                  >
-                    <Download size={17} aria-hidden="true" />
-                  </ActionIcon>
-                </Tooltip>
-              </Group>
-          ) : null}
+            <Group gap={8}>
+              <Tooltip label={t("action.expandStories")}>
+                <ActionIcon
+                  variant="default"
+                  type="button"
+                  onClick={() => setIsIssuesOverlayOpen(true)}
+                  aria-label={t("action.expandStories")}
+                >
+                  <Maximize2 size={17} aria-hidden="true" />
+                </ActionIcon>
+              </Tooltip>
+              {isHost ? (
+                <>
+                  <Tooltip label={t("action.import")}>
+                    <ActionIcon variant="default" type="button" onClick={() => setIsImportIssuesOpen(true)} aria-label={t("action.import")}>
+                      <Upload size={17} aria-hidden="true" />
+                    </ActionIcon>
+                  </Tooltip>
+                  <Tooltip label={t("action.export")}>
+                    <ActionIcon
+                      variant="default"
+                      type="button"
+                      onClick={() => downloadJiraCsv(issues, roomName)}
+                      disabled={issues.length === 0}
+                      aria-label={t("action.export")}
+                    >
+                      <Download size={17} aria-hidden="true" />
+                    </ActionIcon>
+                  </Tooltip>
+                </>
+              ) : null}
+            </Group>
           </Group>
           <ScrollArea.Autosize mah={520} type="auto">
             <Stack gap="xs" pr={4}>
@@ -354,6 +370,15 @@ export function RoomSidebar({
         {t("action.openArchive")}
       </Button>
 
+      <IssuesOverlay
+        activeIssueId={activeIssue?.id ?? null}
+        isDeleting={pendingSync.deleteIssues}
+        isHost={isHost}
+        isOpen={isIssuesOverlayOpen}
+        issues={issues}
+        onClose={() => setIsIssuesOverlayOpen(false)}
+        onDeleteIssues={onDeleteIssues}
+      />
       <AddIssueModal
         issue={editingIssue}
         isOpen={isAddIssueOpen || Boolean(editingIssue)}

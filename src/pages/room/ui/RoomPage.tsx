@@ -35,6 +35,7 @@ type RoomPageProps = {
   onArchiveEstimatedIssues: () => Promise<void>;
   onArchiveIssue: (issue: Issue) => Promise<void>;
   onDeleteIssue: (issue: Issue) => Promise<void>;
+  onDeleteIssues: (issues: Issue[]) => Promise<boolean>;
   onDeleteParticipant: (participant: Participant) => Promise<void>;
   onTransferOwnership: (participant: Participant) => Promise<void>;
   onEditIssue: (issue: Issue, details: IssueDetailsInput) => Promise<boolean>;
@@ -67,6 +68,7 @@ export function RoomPage({
   onArchiveEstimatedIssues,
   onArchiveIssue,
   onDeleteIssue,
+  onDeleteIssues,
   onDeleteParticipant,
   onTransferOwnership,
   onEditIssue,
@@ -158,6 +160,7 @@ export function RoomPage({
               onArchiveEstimatedIssues={onArchiveEstimatedIssues}
               onArchiveIssue={onArchiveIssue}
               onDeleteIssue={onDeleteIssue}
+              onDeleteIssues={onDeleteIssues}
               onDeleteParticipant={onDeleteParticipant}
               onTransferOwnership={onTransferOwnership}
               onEditIssue={onEditIssue}

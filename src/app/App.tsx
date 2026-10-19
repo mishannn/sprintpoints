@@ -47,6 +47,7 @@ function AppContent() {
       onArchiveEstimatedIssues={session.archiveEstimatedIssues}
       onArchiveIssue={session.archiveIssue}
       onDeleteIssue={session.deleteIssue}
+      onDeleteIssues={session.deleteIssues}
       onDeleteParticipant={session.deleteParticipant}
       onTransferOwnership={session.transferOwnership}
       onEditIssue={session.editIssue}
