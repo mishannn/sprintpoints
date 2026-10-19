@@ -44,9 +44,8 @@ function AppContent() {
       voteGroups={session.voteGroups}
       onActivateIssue={session.activateIssue}
       onAddIssue={session.addIssue}
-      onArchiveEstimatedIssues={session.archiveEstimatedIssues}
       onArchiveIssue={session.archiveIssue}
-      onDeleteIssue={session.deleteIssue}
+      onArchiveIssues={session.archiveIssues}
       onDeleteIssues={session.deleteIssues}
       onDeleteParticipant={session.deleteParticipant}
       onTransferOwnership={session.transferOwnership}

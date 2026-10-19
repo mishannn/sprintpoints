@@ -1,5 +1,7 @@
 import type { Issue } from "../../../entities/room/model/types";
 
+export type DedupeMode = "link" | "title";
+
 export type DuplicateIssueGroup = {
   key: string;
   keep: Issue;
@@ -10,10 +12,15 @@ function normalizeTitle(value: string) {
   return value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
 }
 
-// A link identifies a story more reliably than its title, so it wins when present.
-export function getIssueDuplicateKey(issue: Issue) {
-  const link = issue.link.trim();
-  return link ? `link:${link.toLocaleLowerCase()}` : `title:${normalizeTitle(issue.title)}`;
+// Link mode ignores stories without a link because there is nothing reliable
+// to compare them by.
+export function getIssueDuplicateKey(issue: Issue, mode: DedupeMode) {
+  if (mode === "link") {
+    const link = issue.link.trim();
+    return link ? `link:${link.toLocaleLowerCase()}` : null;
+  }
+
+  return `title:${normalizeTitle(issue.title)}`;
 }
 
 function compareIssues(a: Issue, b: Issue, activeIssueId?: string | null) {
@@ -36,11 +43,15 @@ function compareIssues(a: Issue, b: Issue, activeIssueId?: string | null) {
 
 // Keeps the most valuable copy of every repeated story: an estimated story
 // first, then the active one, then the earliest story in the queue.
-export function findDuplicateGroups(issues: Issue[], activeIssueId?: string | null): DuplicateIssueGroup[] {
+export function findDuplicateGroups(issues: Issue[], activeIssueId: string | null | undefined, mode: DedupeMode): DuplicateIssueGroup[] {
   const groups = new Map<string, Issue[]>();
 
   for (const issue of issues) {
-    const key = getIssueDuplicateKey(issue);
+    const key = getIssueDuplicateKey(issue, mode);
+    if (!key) {
+      continue;
+    }
+
     const group = groups.get(key);
 
     if (group) {

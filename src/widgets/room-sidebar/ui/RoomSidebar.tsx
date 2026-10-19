@@ -1,13 +1,11 @@
-import { useState } from "react";
-import { ActionIcon, Badge, Box, Button, Center, Group, Loader, Modal, Paper, ScrollArea, Stack, Text, Title, Tooltip, UnstyledButton } from "@mantine/core";
-import { Archive, ArchiveRestore, Crown, Download, ExternalLink, Maximize2, Pencil, Plus, Settings, Trash2, Upload, Users } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ActionIcon, Badge, Box, Button, Center, Group, Loader, Modal, Paper, ScrollArea, Stack, Text, TextInput, Title, Tooltip, UnstyledButton } from "@mantine/core";
+import { Archive, ArchiveRestore, Crown, ExternalLink, ListChecks, Pencil, Search, Trash2, Users, X } from "lucide-react";
 import type { Issue, Participant, Vote } from "../../../entities/room/model/types";
 import type { IssueDetailsInput, IssueImportInput } from "../../../features/manage-issues/model/issues";
-import { downloadJiraCsv } from "../../../features/manage-issues/model/jiraCsv";
+import { matchesIssueQuery } from "../../../features/manage-issues/model/issueFilter";
 import type { PendingSync } from "../../../features/room-session/model/useRoomSession";
 import { useI18n } from "../../../shared/i18n";
-import { AddIssueModal } from "./AddIssueModal";
-import { ImportIssuesModal } from "./ImportIssuesModal";
 import { IssuesOverlay } from "./IssuesOverlay";
 
 type RoomSidebarProps = {
@@ -23,9 +21,8 @@ type RoomSidebarProps = {
   roomName: string;
   onActivateIssue: (issue: Issue) => void;
   onAddIssue: (details: IssueDetailsInput) => Promise<boolean>;
-  onArchiveEstimatedIssues: () => Promise<void>;
   onArchiveIssue: (issue: Issue) => Promise<void>;
-  onDeleteIssue: (issue: Issue) => Promise<void>;
+  onArchiveIssues: (issues: Issue[]) => Promise<boolean>;
   onDeleteIssues: (issues: Issue[]) => Promise<boolean>;
   onDeleteParticipant: (participant: Participant) => Promise<void>;
   onTransferOwnership: (participant: Participant) => Promise<void>;
@@ -51,9 +48,8 @@ export function RoomSidebar({
   roomName,
   onActivateIssue,
   onAddIssue,
-  onArchiveEstimatedIssues,
   onArchiveIssue,
-  onDeleteIssue,
+  onArchiveIssues,
   onDeleteIssues,
   onDeleteParticipant,
   onTransferOwnership,
@@ -62,33 +58,13 @@ export function RoomSidebar({
   onUnarchiveIssue,
 }: RoomSidebarProps) {
   const { t } = useI18n();
-  const [isAddIssueOpen, setIsAddIssueOpen] = useState(false);
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
-  const [isImportIssuesOpen, setIsImportIssuesOpen] = useState(false);
   const [isIssuesOverlayOpen, setIsIssuesOverlayOpen] = useState(false);
-  const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
-  const estimatedIssuesCount = issues.filter((issue) => issue.estimate).length;
-
-  const closeModal = () => {
-    setIsAddIssueOpen(false);
-    setEditingIssue(null);
-  };
-
-  const handleModalSubmit = (details: IssueDetailsInput) => {
-    if (editingIssue) {
-      return onEditIssue(editingIssue, details);
-    }
-
-    return onAddIssue(details);
-  };
-
-  const handleDeleteIssue = (issue: Issue) => {
-    if (!window.confirm(t("confirm.deleteStory"))) {
-      return;
-    }
-
-    void onDeleteIssue(issue);
-  };
+  const [issueQuery, setIssueQuery] = useState("");
+  const visibleIssues = useMemo(
+    () => issues.filter((issue) => matchesIssueQuery(issue, issueQuery)),
+    [issueQuery, issues],
+  );
 
   const handleDeleteParticipant = (participant: Participant) => {
     if (!window.confirm(t("confirm.deleteParticipant", { name: participant.name }))) {
@@ -108,14 +84,6 @@ export function RoomSidebar({
 
   const handleArchiveIssue = (issue: Issue) => {
     void onArchiveIssue(issue);
-  };
-
-  const handleArchiveEstimatedIssues = () => {
-    if (!window.confirm(t("confirm.archiveEstimatedStories"))) {
-      return;
-    }
-
-    void onArchiveEstimatedIssues();
   };
 
   const handleUnarchiveIssue = (issue: Issue) => {
@@ -214,149 +182,98 @@ export function RoomSidebar({
         <Stack gap="md">
           <Group justify="space-between" align="center" gap="sm">
             <Group gap="xs">
-            <Settings size={18} aria-hidden="true" />
+              <ListChecks size={18} aria-hidden="true" />
               <Title order={2} fz="lg">
                 {t("label.stories")}
               </Title>
             </Group>
-            <Group gap={8}>
-              <Tooltip label={t("action.expandStories")}>
-                <ActionIcon
-                  variant="default"
-                  type="button"
-                  onClick={() => setIsIssuesOverlayOpen(true)}
-                  aria-label={t("action.expandStories")}
-                >
-                  <Maximize2 size={17} aria-hidden="true" />
-                </ActionIcon>
-              </Tooltip>
-              {isHost ? (
-                <>
-                  <Tooltip label={t("action.import")}>
-                    <ActionIcon variant="default" type="button" onClick={() => setIsImportIssuesOpen(true)} aria-label={t("action.import")}>
-                      <Upload size={17} aria-hidden="true" />
-                    </ActionIcon>
-                  </Tooltip>
-                  <Tooltip label={t("action.export")}>
-                    <ActionIcon
-                      variant="default"
-                      type="button"
-                      onClick={() => downloadJiraCsv(issues, roomName)}
-                      disabled={issues.length === 0}
-                      aria-label={t("action.export")}
-                    >
-                      <Download size={17} aria-hidden="true" />
-                    </ActionIcon>
-                  </Tooltip>
-                </>
-              ) : null}
-            </Group>
+            <Tooltip label={t("action.manageStories")}>
+              <ActionIcon
+                variant="default"
+                type="button"
+                onClick={() => setIsIssuesOverlayOpen(true)}
+                aria-label={t("action.manageStories")}
+              >
+                <Pencil size={17} aria-hidden="true" />
+              </ActionIcon>
+            </Tooltip>
           </Group>
-          <ScrollArea.Autosize mah={520} type="auto">
-            <Stack gap="xs" pr={4}>
-              {issues.map((issue) => {
-                const link = issue.link ?? "";
 
-            return (
+          <TextInput
+            value={issueQuery}
+            onChange={(event) => setIssueQuery(event.currentTarget.value)}
+            placeholder={t("placeholder.searchStories")}
+            aria-label={t("aria.searchStories")}
+            leftSection={<Search size={16} aria-hidden="true" />}
+            rightSection={
+              issueQuery ? (
+                <ActionIcon
+                  variant="subtle"
+                  color="gray"
+                  size="sm"
+                  type="button"
+                  onClick={() => setIssueQuery("")}
+                  aria-label={t("action.clearSearch")}
+                >
+                  <X size={14} aria-hidden="true" />
+                </ActionIcon>
+              ) : null
+            }
+          />
+
+          {visibleIssues.length === 0 ? (
+            <Center mih={80}>
+              <Text c="dimmed" fw={700} fz="sm" ta="center">
+                {issues.length === 0 ? t("state.noStories") : t("state.noSearchResults")}
+              </Text>
+            </Center>
+          ) : (
+            <ScrollArea.Autosize mah={520} type="auto">
+              <Stack gap="xs">
+                {visibleIssues.map((issue) => (
                   <Paper key={issue.id} withBorder bg={issue.id === activeIssue?.id ? "white" : "gray.0"} p="xs" radius="md">
                     <Stack gap={6}>
                       <UnstyledButton type="button" onClick={() => onActivateIssue(issue)} disabled={!isHost} p={6}>
-                        <Stack gap={4}>
-                          <Text fw={500} lineClamp={2}>
-                            {issue.title}
-                          </Text>
-                          {link ? (
-                            <Text c="dimmed" fz="xs" lineClamp={2}>
-                              {link}
-                            </Text>
-                          ) : null}
-                        </Stack>
+                        <Text fw={500} lineClamp={2}>
+                          {issue.title}
+                        </Text>
                       </UnstyledButton>
-                {issue.estimate || link || isHost ? (
+                      {issue.estimate || isHost || pendingSync.activeIssueId === issue.id ? (
                         <Group justify="space-between" gap="xs" pl={6}>
                           <Group gap={6}>
                             {pendingSync.activeIssueId === issue.id ? <Loader size="xs" aria-hidden="true" /> : null}
                             {issue.estimate ? <Badge variant="default">{issue.estimate}</Badge> : null}
                           </Group>
-                          <Group gap={5}>
-                      {link ? (
-                              <Tooltip label={t("action.openStoryLink")}>
-                                <ActionIcon component="a" variant="default" href={getExternalHref(link)} target="_blank" rel="noreferrer" aria-label={t("action.openStoryLink")}>
-                                  <ExternalLink size={16} aria-hidden="true" />
-                                </ActionIcon>
-                              </Tooltip>
-                      ) : null}
-                      {isHost ? (
-                        <>
-                                <Tooltip label={issue.estimate ? t("action.archiveStory") : t("hint.archiveNeedsEstimate")}>
-                                  <ActionIcon
-                                    variant="default"
-                                    type="button"
-                                    onClick={() => handleArchiveIssue(issue)}
-                                    aria-label={t("action.archiveStory")}
-                                    disabled={!issue.estimate || pendingSync.archiveIssueId === issue.id || pendingSync.editIssueId === issue.id || pendingSync.deleteIssueId === issue.id}
-                                  >
-                                    {pendingSync.archiveIssueId === issue.id ? (
-                                      <Loader size="xs" aria-hidden="true" />
-                                    ) : (
-                                      <Archive size={16} aria-hidden="true" />
-                                    )}
-                                  </ActionIcon>
-                                </Tooltip>
-                                <ActionIcon
-                                  variant="default"
-                            type="button"
-                            onClick={() => setEditingIssue(issue)}
-                            aria-label={t("action.editStory")}
-                            disabled={pendingSync.editIssueId === issue.id || pendingSync.deleteIssueId === issue.id}
-                          >
-                            {pendingSync.editIssueId === issue.id ? (
-                                    <Loader size="xs" aria-hidden="true" />
-                            ) : (
-                              <Pencil size={16} aria-hidden="true" />
-                            )}
-                                </ActionIcon>
-                                <ActionIcon
-                                  variant="default"
-                                  color="red"
-                            type="button"
-                            onClick={() => handleDeleteIssue(issue)}
-                            aria-label={t("action.deleteStory")}
-                            disabled={pendingSync.deleteIssueId === issue.id || pendingSync.editIssueId === issue.id}
-                          >
-                            {pendingSync.deleteIssueId === issue.id ? (
-                                    <Loader size="xs" aria-hidden="true" />
-                            ) : (
-                              <Trash2 size={16} aria-hidden="true" />
-                            )}
-                                </ActionIcon>
-                        </>
-                      ) : null}
-                          </Group>
+                          {isHost ? (
+                            <Tooltip label={issue.estimate ? t("action.archiveStory") : t("hint.archiveNeedsEstimate")}>
+                              <ActionIcon
+                                variant="default"
+                                type="button"
+                                onClick={() => handleArchiveIssue(issue)}
+                                aria-label={t("action.archiveStory")}
+                                disabled={
+                                  !issue.estimate ||
+                                  pendingSync.archiveIssueId === issue.id ||
+                                  pendingSync.archiveIssues ||
+                                  pendingSync.editIssueId === issue.id
+                                }
+                              >
+                                {pendingSync.archiveIssueId === issue.id ? (
+                                  <Loader size="xs" aria-hidden="true" />
+                                ) : (
+                                  <Archive size={16} aria-hidden="true" />
+                                )}
+                              </ActionIcon>
+                            </Tooltip>
+                          ) : null}
                         </Group>
-                ) : null}
+                      ) : null}
                     </Stack>
                   </Paper>
-            );
-          })}
-            </Stack>
-          </ScrollArea.Autosize>
-        {isHost ? (
-            <Group grow>
-              <Button
-                variant="default"
-                type="button"
-                onClick={handleArchiveEstimatedIssues}
-                disabled={estimatedIssuesCount === 0 || pendingSync.archiveEstimatedIssues}
-                leftSection={pendingSync.archiveEstimatedIssues ? <Loader size="xs" /> : <Archive size={18} aria-hidden="true" />}
-              >
-                {t("action.archiveEstimatedStories")}
-              </Button>
-              <Button variant="light" type="button" onClick={() => setIsAddIssueOpen(true)} leftSection={pendingSync.addIssue ? <Loader size="xs" /> : <Plus size={18} aria-hidden="true" />}>
-              {t("action.addStory")}
-              </Button>
-            </Group>
-        ) : null}
+                ))}
+              </Stack>
+            </ScrollArea.Autosize>
+          )}
         </Stack>
       </Paper>
 
@@ -372,26 +289,19 @@ export function RoomSidebar({
 
       <IssuesOverlay
         activeIssueId={activeIssue?.id ?? null}
-        isDeleting={pendingSync.deleteIssues}
         isHost={isHost}
         isOpen={isIssuesOverlayOpen}
         issues={issues}
+        pendingSync={pendingSync}
+        roomName={roomName}
+        onAddIssue={onAddIssue}
+        onArchiveIssues={onArchiveIssues}
         onClose={() => setIsIssuesOverlayOpen(false)}
         onDeleteIssues={onDeleteIssues}
+        onEditIssue={onEditIssue}
+        onImportIssues={onImportIssues}
       />
-      <AddIssueModal
-        issue={editingIssue}
-        isOpen={isAddIssueOpen || Boolean(editingIssue)}
-        isSaving={pendingSync.addIssue || Boolean(editingIssue && pendingSync.editIssueId === editingIssue.id)}
-        onClose={closeModal}
-        onSubmit={handleModalSubmit}
-      />
-      <ImportIssuesModal
-        isOpen={isImportIssuesOpen}
-        isSaving={pendingSync.addIssue}
-        onClose={() => setIsImportIssuesOpen(false)}
-        onSubmit={onImportIssues}
-      />
+
       <Modal opened={isArchiveOpen} onClose={() => setIsArchiveOpen(false)} title={t("modal.archiveTitle")} size="lg">
         {archivedIssues.length ? (
           <ScrollArea.Autosize mah={520} type="auto">

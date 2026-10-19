@@ -9,7 +9,6 @@ import {
 } from "../../manage-participants/model/participants";
 import {
   archiveIssue as archiveIssueRequest,
-  archiveEstimatedIssues as archiveEstimatedIssuesRequest,
   createIssue,
   activateIssue as activateIssueRequest,
   deleteIssue as deleteIssueRequest,
@@ -36,10 +35,9 @@ export type PendingSync = {
   resetVoting: boolean;
   activeIssueId: string | null;
   addIssue: boolean;
-  archiveEstimatedIssues: boolean;
+  archiveIssues: boolean;
   archiveIssueId: string | null;
   editIssueId: string | null;
-  deleteIssueId: string | null;
   deleteIssues: boolean;
   deleteParticipantId: string | null;
   transferOwnershipId: string | null;
@@ -55,10 +53,9 @@ const idlePendingSync: PendingSync = {
   resetVoting: false,
   activeIssueId: null,
   addIssue: false,
-  archiveEstimatedIssues: false,
+  archiveIssues: false,
   archiveIssueId: null,
   editIssueId: null,
-  deleteIssueId: null,
   deleteIssues: false,
   deleteParticipantId: null,
   transferOwnershipId: null,
@@ -515,44 +512,6 @@ export function useRoomSession() {
     }
   }, [hostToken, isHost, loadRoom, setPending, showError, state, t]);
 
-  const deleteIssue = useCallback(async (issue: Issue) => {
-    if (!state || !isHost || !hostToken) {
-      return;
-    }
-
-    const previousState = state;
-    const currentActiveIssues = state.issues.filter((item) => !item.archived_at);
-    const issueIndex = currentActiveIssues.findIndex((item) => item.id === issue.id);
-    const nextIssue = issueIndex >= 0 ? currentActiveIssues[issueIndex + 1] ?? currentActiveIssues[issueIndex - 1] ?? null : null;
-    const isDeletingActiveIssue = state.room.active_issue_id === issue.id;
-    const nextActiveIssueId = isDeletingActiveIssue ? nextIssue?.id ?? null : state.room.active_issue_id;
-
-    setNotice(null);
-    setPending({ deleteIssueId: issue.id });
-    setState((current) =>
-      current
-        ? {
-            ...current,
-            room: isDeletingActiveIssue
-              ? { ...current.room, active_issue_id: nextActiveIssueId, revealed: false }
-              : current.room,
-            issues: current.issues.filter((item) => item.id !== issue.id),
-            votes: current.votes.filter((vote) => vote.issue_id !== issue.id),
-          }
-        : current,
-    );
-
-    try {
-      await deleteIssueRequest(state.room.id, issue.id, hostToken, isDeletingActiveIssue ? nextActiveIssueId : undefined);
-      await loadRoom(state.room.code);
-    } catch (error) {
-      setState(previousState);
-      showError(error, t("error.deleteStory"));
-    } finally {
-      setPending({ deleteIssueId: null });
-    }
-  }, [hostToken, isHost, loadRoom, setPending, showError, state, t]);
-
   const deleteIssues = useCallback(async (issuesToDelete: Issue[]) => {
     if (!state || !isHost || !hostToken) {
       return false;
@@ -750,33 +709,32 @@ export function useRoomSession() {
     }
   }, [hostToken, isHost, loadRoom, setPending, showError, state, t]);
 
-  const archiveEstimatedIssues = useCallback(async () => {
+  const archiveIssues = useCallback(async (issuesToArchive: Issue[]) => {
     if (!state || !isHost || !hostToken) {
-      return;
+      return false;
     }
 
-    const archivedAt = new Date().toISOString();
-    const previousState = state;
-    const estimatedActiveIssues = activeIssues.filter((issue) => issue.estimate);
-
-    if (estimatedActiveIssues.length === 0) {
-      return;
+    const uniqueIssues = [...new Map(issuesToArchive.map((issue) => [issue.id, issue])).values()];
+    if (uniqueIssues.length === 0) {
+      return false;
     }
 
-    const estimatedIssueIds = new Set(estimatedActiveIssues.map((issue) => issue.id));
-    const isArchivingActiveIssue = state.room.active_issue_id ? estimatedIssueIds.has(state.room.active_issue_id) : false;
-    const activeIssueIndex = activeIssues.findIndex((issue) => issue.id === state.room.active_issue_id);
-    const remainingActiveIssues = activeIssues.filter((issue) => !estimatedIssueIds.has(issue.id));
-    const nextActiveIssue =
+    const archivedIssueIds = new Set(uniqueIssues.map((issue) => issue.id));
+    const currentActiveIssueId = state.room.active_issue_id;
+    const isArchivingActiveIssue = Boolean(currentActiveIssueId && archivedIssueIds.has(currentActiveIssueId));
+    const currentActiveIssues = state.issues.filter((issue) => !issue.archived_at);
+    const activeIssueIndex = currentActiveIssues.findIndex((issue) => issue.id === currentActiveIssueId);
+    const nextIssue =
       isArchivingActiveIssue && activeIssueIndex >= 0
-        ? remainingActiveIssues.find((issue) => issue.position > activeIssues[activeIssueIndex].position) ??
-          [...remainingActiveIssues].reverse().find((issue) => issue.position < activeIssues[activeIssueIndex].position) ??
+        ? currentActiveIssues.slice(activeIssueIndex + 1).find((issue) => !archivedIssueIds.has(issue.id)) ??
+          [...currentActiveIssues.slice(0, activeIssueIndex)].reverse().find((issue) => !archivedIssueIds.has(issue.id)) ??
           null
         : null;
-    const nextActiveIssueId = isArchivingActiveIssue ? nextActiveIssue?.id ?? null : state.room.active_issue_id;
+    const nextActiveIssueId = isArchivingActiveIssue ? nextIssue?.id ?? null : currentActiveIssueId;
+    const archivedAt = new Date().toISOString();
 
     setNotice(null);
-    setPending({ archiveEstimatedIssues: true });
+    setPending({ archiveIssues: true });
     setState((current) =>
       current
         ? {
@@ -785,22 +743,35 @@ export function useRoomSession() {
               ? { ...current.room, active_issue_id: nextActiveIssueId, revealed: false }
               : current.room,
             issues: current.issues.map((issue) =>
-              estimatedIssueIds.has(issue.id) ? { ...issue, archived_at: archivedAt } : issue,
+              archivedIssueIds.has(issue.id) ? { ...issue, archived_at: archivedAt } : issue,
             ),
           }
         : current,
     );
 
     try {
-      await archiveEstimatedIssuesRequest(state.room.id, hostToken, isArchivingActiveIssue ? nextActiveIssueId : undefined);
+      for (const issue of uniqueIssues) {
+        await archiveIssueRequest(
+          state.room.id,
+          issue.id,
+          hostToken,
+          isArchivingActiveIssue && issue.id === currentActiveIssueId ? nextActiveIssueId : undefined,
+        );
+      }
       await loadRoom(state.room.code);
+      return true;
     } catch (error) {
-      setState(previousState);
-      showError(error, t("error.archiveEstimatedStories"));
+      try {
+        await loadRoom(state.room.code);
+      } catch {
+        // Keep the optimistic state if the room cannot be reloaded.
+      }
+      showError(error, t("error.archiveStories"));
+      return false;
     } finally {
-      setPending({ archiveEstimatedIssues: false });
+      setPending({ archiveIssues: false });
     }
-  }, [activeIssues, hostToken, isHost, loadRoom, setPending, showError, state, t]);
+  }, [hostToken, isHost, loadRoom, setPending, showError, state, t]);
 
   const unarchiveIssue = useCallback(async (issue: Issue) => {
     if (!state || !isHost || !hostToken) {
@@ -976,12 +947,11 @@ export function useRoomSession() {
     resetVoting,
     addIssue,
     editIssue,
-    deleteIssue,
     deleteIssues,
     deleteParticipant,
     transferOwnership,
     switchObserverMode,
-    archiveEstimatedIssues,
+    archiveIssues,
     archiveIssue,
     unarchiveIssue,
     importIssues,

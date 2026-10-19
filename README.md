@@ -8,10 +8,10 @@ The app uses a React/Vite frontend and a Go backend backed by PostgreSQL in Dock
 
 - **Realtime rooms** — participants, stories, votes, and estimates sync instantly over WebSocket.
 - **Private voting** — everyone votes with a shared card deck; results stay hidden until the facilitator reveals them.
-- **Story queue** — add, edit, link, estimate, archive, and restore stories during a session.
-- **Full-screen story management** — expand the sidebar queue into a focused workspace with instant search across titles, descriptions, and links.
-- **Host bulk cleanup** — select any number of stories and delete them together.
-- **Host duplicate detection** — find repeated stories by link, or by title when no link is set, and remove extra copies in one action. The best copy is kept: an estimated story first, then the active story, then the earliest one.
+- **Session story queue** — a compact sidebar list for switching the active story, with quick search and one-click archiving.
+- **Full-screen story management** — expand the queue into a focused workspace with add/edit, search, bulk selection, bulk archiving, and deletion.
+- **Host bulk cleanup** — select all visible stories or only estimated/not estimated ones, then archive or delete them together.
+- **Host duplicate detection** — choose whether duplicates are matched by link or by title, preview flagged copies, and remove extras in one action. The best copy is kept: an estimated story first, then the active story, then the earliest one.
 - **CSV import and export** — import Jira CSV exports with column mapping and export the current queue as CSV.
 - **Participant controls** — spectator mode, host ownership transfer, and participant removal.
 - **Bilingual interface** — English and Russian.
