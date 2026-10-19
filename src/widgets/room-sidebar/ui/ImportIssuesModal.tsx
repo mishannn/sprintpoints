@@ -37,6 +37,31 @@ function formatOptionLabel(header: string, index: number, unnamedColumnLabel: st
   return `${index + 1}. ${header || unnamedColumnLabel}`;
 }
 
+type PreviewFieldProps = {
+  label: string;
+  value: string;
+  strong?: boolean;
+};
+
+function PreviewField({ label, value, strong = false }: PreviewFieldProps) {
+  return (
+    <Group gap="xs" align="flex-start" wrap="nowrap">
+      <Text c="dimmed" fz="xs" fw={700} w={96} style={{ flexShrink: 0 }}>
+        {label}
+      </Text>
+      <Text
+        fz="sm"
+        fw={strong ? 700 : 400}
+        c={value ? undefined : "dimmed"}
+        lineClamp={strong ? 2 : 1}
+        style={{ flex: 1, overflowWrap: "anywhere" }}
+      >
+        {value || "—"}
+      </Text>
+    </Group>
+  );
+}
+
 export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: ImportIssuesModalProps) {
   const { t } = useI18n();
   const [csvData, setCsvData] = useState<CsvData | null>(null);
@@ -201,7 +226,7 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
                 />
               </Stack>
 
-              <Paper withBorder bg="gray.0" p="md">
+              <Paper withBorder bg="gray.0" p="sm">
                 <Stack gap="xs">
                   <Group justify="space-between" gap="sm">
                     <Text fw={700}>{t("common.storiesCount", { count: mappedIssues.length })}</Text>
@@ -209,18 +234,16 @@ export function ImportIssuesModal({ isOpen, isSaving, onClose, onSubmit }: Impor
                       {t("common.csvRows", { count: csvData.rows.length })}
                     </Text>
                   </Group>
-                {previewRows.map((issue, index) => (
-                    <Paper key={`${issue.title}-${index}`} p="sm">
-                      <Group justify="space-between" gap="sm" wrap="nowrap">
-                        <Text fw={700} truncate>
-                          {issue.title}
-                        </Text>
-                        <Text c="dimmed" fz="xs" fw={700} truncate>
-                          {issue.estimate || issue.link || issue.description || t("common.noOptionalFields")}
-                        </Text>
-                      </Group>
+                  {previewRows.map((issue, index) => (
+                    <Paper key={`${issue.title}-${index}`} p="xs" withBorder>
+                      <Stack gap={1}>
+                        <PreviewField label={t("common.title")} value={issue.title} strong />
+                        <PreviewField label={t("common.description")} value={issue.description} />
+                        <PreviewField label={t("common.link")} value={issue.link} />
+                        <PreviewField label={t("common.estimate")} value={issue.estimate} />
+                      </Stack>
                     </Paper>
-                ))}
+                  ))}
                 </Stack>
               </Paper>
             </>
