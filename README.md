@@ -18,13 +18,15 @@ The app uses a React/Vite frontend and a Go backend backed by PostgreSQL in Dock
 
 ## Screenshots
 
-<img src="screenshots/home.png" width="800" alt="Home page with create and join room forms">
+<img src="screenshots/home.png" width="800" alt="Lobby with create and join room forms">
 
-<img src="screenshots/room-voting.png" width="800" alt="Room with voting deck and hidden votes">
+<img src="screenshots/room-voting.png" width="800" alt="Room with the story queue, voting deck, and hidden votes">
 
-<img src="screenshots/room-voted.png" width="800" alt="Room with submitted votes and story estimates">
+<img src="screenshots/room-voted.png" width="800" alt="Room with revealed votes, average, range, and per-person estimates">
 
-<img src="screenshots/csv-import.png" width="800" alt="Import stories from a CSV file">
+<img src="screenshots/story-management.png" width="800" alt="Full-screen story management with search, bulk selection, dedupe, and archive actions">
+
+<img src="screenshots/csv-import.png" width="800" alt="CSV import with column mapping and a preview of stories to import">
 
 ## Tech Stack
 
