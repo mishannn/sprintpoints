@@ -4,6 +4,18 @@ Sprint Points is a realtime planning poker app for agile teams. Create a room, i
 
 The app uses a React/Vite frontend and a Go backend backed by PostgreSQL in Docker Compose. The backend also supports SQLite for local development and tests.
 
+## Features
+
+- **Realtime rooms** — participants, stories, votes, and estimates sync instantly over WebSocket.
+- **Private voting** — everyone votes with a shared card deck; results stay hidden until the facilitator reveals them.
+- **Story queue** — add, edit, link, estimate, archive, and restore stories during a session.
+- **Full-screen story management** — expand the sidebar queue into a focused workspace with instant search across titles, descriptions, and links.
+- **Host bulk cleanup** — select any number of stories and delete them together.
+- **Host duplicate detection** — find repeated stories by link, or by title when no link is set, and remove extra copies in one action. The best copy is kept: an estimated story first, then the active story, then the earliest one.
+- **CSV import and export** — import Jira CSV exports with column mapping and export the current queue as CSV.
+- **Participant controls** — spectator mode, host ownership transfer, and participant removal.
+- **Bilingual interface** — English and Russian.
+
 ## Screenshots
 
 <img src="screenshots/home.png" width="800" alt="Home page with create and join room forms">
