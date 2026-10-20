@@ -1,14 +1,23 @@
-FROM golang:1.24-bookworm AS build
+FROM node:24-bookworm-slim AS build
 
-WORKDIR /src
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY go.mod go.sum ./
-RUN go mod download
+WORKDIR /app
 
-COPY backend ./backend
-RUN mkdir -p /app && CGO_ENABLED=1 go build -o /app/server ./backend/cmd/server
+COPY backend/package.json backend/package-lock.json ./
+RUN npm ci
 
-FROM debian:bookworm-slim
+COPY backend/tsconfig.json backend/nest-cli.json ./
+COPY backend/src ./src
+RUN npm run build && npm prune --omit=dev
+
+FROM node:24-bookworm-slim
+
+ENV NODE_ENV=production \
+    TZ=UTC \
+    LISTEN_ADDR=:8000
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
@@ -16,9 +25,10 @@ RUN apt-get update \
     && useradd --system --uid 10001 --create-home app
 
 WORKDIR /app
-COPY --from=build --chown=app:app /app/server /app/server
-RUN chown app:app /app
+COPY --from=build --chown=app:app /app/node_modules ./node_modules
+COPY --from=build --chown=app:app /app/dist ./dist
+COPY --from=build --chown=app:app /app/package.json ./
 
 USER app
 EXPOSE 8000
-CMD ["/app/server"]
+CMD ["node", "dist/main.js"]

@@ -1,5 +1,5 @@
 {
-  "name": "sprintpoints-backend-nest",
+  "name": "sprintpoints-backend",
   "version": "1.0.0",
   "description": "NestJS API for Sprint Points",
   "private": true,

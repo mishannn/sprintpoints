@@ -1,8 +1,8 @@
--- One-shot transfer from the running Go backend to the NestJS backend.
+-- One-shot transfer from a legacy Go schema to the NestJS backend.
 --
 -- Run this once after:
 --   1. the old backend has been stopped,
---   2. the NestJS schema has been created and migrated by backend-nest,
+--   2. the NestJS schema has been created and migrated by backend,
 --   3. the NestJS target tables are still empty.
 --
 -- Defaults: source "sprintpoints" (the Go schema) -> target "sprintpoints_nest"

@@ -1,0 +1,7 @@
+# Optional source build for local Docker use:
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile

@@ -2,9 +2,9 @@
 .tmp
 node_modules
 dist
-backend-nest/node_modules
-backend-nest/dist
-backend-nest/tsconfig.tsbuildinfo
+backend/node_modules
+backend/dist
+backend/tsconfig.tsbuildinfo
 *.sqlite
 *.sqlite3
 *.db

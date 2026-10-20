@@ -1,7 +1,7 @@
 {
   "name": "planningpoker",
   "version": "1.0.0",
-  "description": "Realtime planning poker app backed by Go and NestJS APIs.",
+  "description": "Realtime planning poker app with a NestJS backend.",
   "private": true,
   "scripts": {
     "dev": "vite --host 0.0.0.0",
@@ -11,7 +11,6 @@
   "keywords": [
     "planning-poker",
     "nestjs",
-    "golang",
     "react"
   ],
   "author": "",

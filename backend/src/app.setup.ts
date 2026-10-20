@@ -13,7 +13,7 @@ export function configureApp(app: INestApplication, origins: string[]): void {
   app.enableShutdownHooks();
 }
 
-/** Gin redirected trailing slashes; keep that behavior for existing clients. */
+/** Keep the legacy trailing-slash redirect behavior for existing clients. */
 function trailingSlashRedirect(request: Request, response: Response, next: NextFunction): void {
   if (request.path.length > 1 && request.path.endsWith("/")) {
     const queryIndex = request.originalUrl.indexOf("?");
