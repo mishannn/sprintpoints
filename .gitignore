@@ -12,3 +12,9 @@ docker/pgadmin/pgpass
 # Local Go build/test artifacts
 .tmp/
 /server
+
+# TypeScript incremental build state
+*.tsbuildinfo
+
+# Database backups created by ops/deploy-nestjs.sh
+backup-before-nestjs-*.sql

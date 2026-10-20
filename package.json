@@ -1,7 +1,7 @@
 {
   "name": "planningpoker",
   "version": "1.0.0",
-  "description": "Realtime planning poker app backed by FastAPI.",
+  "description": "Realtime planning poker app backed by Go and NestJS APIs.",
   "private": true,
   "scripts": {
     "dev": "vite --host 0.0.0.0",
@@ -10,7 +10,8 @@
   },
   "keywords": [
     "planning-poker",
-    "fastapi",
+    "nestjs",
+    "golang",
     "react"
   ],
   "author": "",

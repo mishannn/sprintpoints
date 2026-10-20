@@ -36,7 +36,18 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend-nest/package-lock.json
       - run: npm ci
+      - name: Install NestJS backend dependencies
+        run: npm ci --prefix backend-nest
+      - name: Test NestJS backend
+        run: npm test --prefix backend-nest
+      - name: Test NestJS backend against PostgreSQL
+        run: npm run test:postgres --prefix backend-nest
+      - name: Build NestJS backend
+        run: npm run build --prefix backend-nest
       - run: npm run build
 
   publish-backend-image:
