@@ -4,6 +4,7 @@ services:
     restart: unless-stopped
     environment:
       BASE_DOMAIN: ${BASE_DOMAIN:?Set BASE_DOMAIN in .env}
+      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:-backend:8000}
     ports:
       - "80:80"
       - "443:443"
@@ -52,6 +53,30 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "/app/server", "-healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend-nest:
+    build:
+      context: .
+      dockerfile: backend-nest/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_SCHEMA: ${NEST_DATABASE_SCHEMA:-sprintpoints_nest}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      PLANNING_POKER_CORS_ORIGINS: ${PLANNING_POKER_CORS_ORIGINS:-https://sprintpoints.${BASE_DOMAIN}}
+    expose:
+      - "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "dist/main.js", "-healthcheck"]
       interval: 10s
       timeout: 5s
       retries: 5

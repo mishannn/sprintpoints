@@ -2,11 +2,13 @@
 .tmp
 node_modules
 dist
+backend-nest/node_modules
+backend-nest/dist
+backend-nest/tsconfig.tsbuildinfo
 *.sqlite
 *.sqlite3
 *.db
 .env
 .env.*
-
-docker/pgadmin/pgpass
 !.env.example
+docker/pgadmin/pgpass
