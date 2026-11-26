@@ -1,0 +1,12 @@
+.venv/
+.venv-workers/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+python_modules/
+pylock.toml
+src/vendor/
+.wrangler/
+.dev.vars
+.dev.vars.*
+*.pyc

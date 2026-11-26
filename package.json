@@ -1,0 +1,45 @@
+{
+  "name": "planningpoker",
+  "version": "2.0.0",
+  "description": "Realtime planning poker app with a FastAPI/SQLAlchemy backend on Cloudflare Workers.",
+  "private": true,
+  "workspaces": [
+    "shared"
+  ],
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "backend:dev": "cd backend && uv run pywrangler dev",
+    "backend:test": "cd backend && uv run pytest && uv run ruff check .",
+    "backend:deploy": "cd backend && uv run pywrangler deploy"
+  },
+  "keywords": [
+    "planning-poker",
+    "cloudflare-workers",
+    "fastapi",
+    "sqlalchemy",
+    "python",
+    "react"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "@mantine/core": "^9.3.2",
+    "@mantine/hooks": "^9.3.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
+    "lucide-react": "^1.17.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@emnapi/core": "1.11.1",
+    "@emnapi/runtime": "1.11.1"
+  }
+}

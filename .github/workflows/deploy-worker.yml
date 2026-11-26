@@ -1,0 +1,59 @@
+name: Deploy Worker
+
+# Deploys the Python backend on every push to main that touches backend/.
+# Requires CLOUDFLARE_API_TOKEN (Workers Scripts:Edit, D1:Edit,
+# Durable Objects:Edit, Workers Routes:Edit) and D1_DATABASE_ID.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-worker.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
+    steps:
+      - name: Require deployment secrets
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Missing repository secret CLOUDFLARE_API_TOKEN."
+            exit 1
+          fi
+          if [ -z "$D1_DATABASE_ID" ]; then
+            echo "::error::Missing repository secret D1_DATABASE_ID."
+            exit 1
+          fi
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Install dependencies
+        working-directory: backend
+        run: uv sync --frozen --group dev
+      - name: Lint and unit tests
+        working-directory: backend
+        run: |
+          uv run --frozen ruff check .
+          uv run --frozen pytest
+      - name: Point Wrangler at the D1 database
+        working-directory: backend
+        run: sed -i "s/REPLACE_WITH_D1_DATABASE_ID/${D1_DATABASE_ID}/" wrangler.jsonc
+      - name: Deploy
+        working-directory: backend
+        run: uv run --frozen pywrangler deploy

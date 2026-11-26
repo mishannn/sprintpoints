@@ -1,0 +1,79 @@
+import type { AppErrorCode } from "../lib/AppError";
+import { AppError } from "../lib/AppError";
+import {
+  HOST_TOKEN_HEADER,
+  PARTICIPANT_TOKEN_HEADER,
+  roomWebSocketPath,
+} from "../../../shared/constants";
+
+const configuredApiUrl = import.meta.env.VITE_API_URL as string | undefined;
+export const apiBaseUrl = (configuredApiUrl?.replace(/\/$/, "") || "/api");
+export const hasApiConfig = true;
+
+type RequestOptions = {
+  body?: unknown;
+  errorCode: AppErrorCode;
+  hostToken?: string | null;
+  method?: string;
+  participantToken?: string | null;
+};
+
+type RoomEventsAuth = {
+  participantToken?: string | null;
+  hostToken?: string | null;
+};
+
+export function roomEventsUrl(roomId: string, auth: RoomEventsAuth): string {
+  const base = /^https?:\/\//i.test(apiBaseUrl)
+    ? apiBaseUrl.replace(/^http/i, "ws")
+    : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}${apiBaseUrl}`;
+
+  const params = new URLSearchParams();
+  if (auth.participantToken) {
+    params.set("participantToken", auth.participantToken);
+  }
+  if (auth.hostToken) {
+    params.set("hostToken", auth.hostToken);
+  }
+  const query = params.toString();
+  return `${base}${roomWebSocketPath(roomId)}${query ? `?${query}` : ""}`;
+}
+
+export async function apiRequest<T>(path: string, options: RequestOptions): Promise<T> {
+  const headers = new Headers();
+
+  if (options.body !== undefined) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  if (options.hostToken) {
+    headers.set(HOST_TOKEN_HEADER, options.hostToken);
+  }
+
+  if (options.participantToken) {
+    headers.set(PARTICIPANT_TOKEN_HEADER, options.participantToken);
+  }
+
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    headers,
+    method: options.method ?? (options.body === undefined ? "GET" : "POST"),
+  });
+
+  if (!response.ok) {
+    let message = response.statusText;
+    try {
+      const payload = (await response.json()) as { detail?: string };
+      message = payload.detail ?? message;
+    } catch {
+      // Fall back to status text when the backend returns an empty response.
+    }
+    throw new AppError(options.errorCode, { message });
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return (await response.json()) as T;
+}
