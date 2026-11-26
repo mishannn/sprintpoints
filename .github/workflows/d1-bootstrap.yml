@@ -1,0 +1,27 @@
+name: D1 bootstrap
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ensure:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Ensure the D1 database exists
+        working-directory: backend
+        run: |
+          set -e
+          if npx --yes wrangler@latest d1 info sprintpoints >/tmp/d1-info.txt 2>&1; then
+            cat /tmp/d1-info.txt
+          else
+            npx --yes wrangler@latest d1 create sprintpoints
+          fi
