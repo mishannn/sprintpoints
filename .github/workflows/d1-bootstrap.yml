@@ -1,6 +1,7 @@
 name: D1 bootstrap
 
 on:
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -20,8 +21,8 @@ jobs:
         working-directory: backend
         run: |
           set -e
-          if npx --yes wrangler@latest d1 info sprintpoints >/tmp/d1-info.txt 2>&1; then
-            cat /tmp/d1-info.txt
+          if npx --yes wrangler@latest d1 info sprintpoints; then
+            echo "D1 database already exists"
           else
             npx --yes wrangler@latest d1 create sprintpoints
           fi
