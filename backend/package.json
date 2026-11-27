@@ -1,0 +1,30 @@
+{
+  "name": "@sprintpoints/backend",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Sprint Points API on Cloudflare Workers: Hono, Drizzle ORM and Durable Object SQLite",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "openapi": "tsx scripts/generate-openapi.ts"
+  },
+  "dependencies": {
+    "@sprintpoints/shared": "*",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.13.23",
+    "hono-openapi": "^1.6.0",
+    "zod": "^4.6.7",
+    "zod-to-json-schema": "^3.25.2"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.10.0",
+    "drizzle-kit": "^0.31.11",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.2",
+    "wrangler": "^4.169.0"
+  }
+}

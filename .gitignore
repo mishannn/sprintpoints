@@ -1,0 +1,16 @@
+node_modules
+dist
+.env
+.env.*
+!.env.example
+.DS_Store
+*.sqlite3
+*.sqlite
+*.db
+# TypeScript incremental build state
+*.tsbuildinfo
+
+# Worker local state and secrets
+backend/.wrangler
+backend/.dev.vars
+backend/.dev.vars.*

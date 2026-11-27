@@ -1,0 +1,2395 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Sprint Points API",
+    "description": "Realtime planning poker rooms, participants, story queues and voting.",
+    "version": "3.0.0"
+  },
+  "tags": [
+    {
+      "name": "Health"
+    },
+    {
+      "name": "Rooms"
+    },
+    {
+      "name": "Participants"
+    },
+    {
+      "name": "Issues"
+    },
+    {
+      "name": "Votes"
+    },
+    {
+      "name": "Admin"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "HostToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Host-Token"
+      },
+      "ParticipantToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Participant-Token"
+      },
+      "AdminToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Admin-Token"
+      }
+    },
+    "schemas": {
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "Room": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "host_token": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "card_set": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "revealed": {
+            "type": "boolean"
+          },
+          "active_issue_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "host_token",
+          "owner_id",
+          "card_set",
+          "revealed",
+          "active_issue_id",
+          "created_at",
+          "updated_at"
+        ],
+        "additionalProperties": false
+      },
+      "Participant": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "is_spectator": {
+            "type": "boolean"
+          },
+          "last_seen_at": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "room_id",
+          "name",
+          "token",
+          "is_spectator",
+          "last_seen_at",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "IssueOutput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "estimate": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "archived_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "room_id",
+          "title",
+          "description",
+          "link",
+          "position",
+          "estimate",
+          "archived_at",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "VoteOutput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "issue_id": {
+            "type": "string"
+          },
+          "participant_id": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "room_id",
+          "issue_id",
+          "participant_id",
+          "value",
+          "created_at",
+          "updated_at"
+        ],
+        "additionalProperties": false
+      },
+      "RoomState": {
+        "type": "object",
+        "properties": {
+          "room": {
+            "$ref": "#/components/schemas/Room"
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Participant"
+            }
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueOutput"
+            }
+          },
+          "votes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VoteOutput"
+            }
+          }
+        },
+        "required": [
+          "room",
+          "participants",
+          "issues",
+          "votes"
+        ],
+        "additionalProperties": false
+      },
+      "CreateRoomResponse": {
+        "type": "object",
+        "properties": {
+          "hostToken": {
+            "type": "string"
+          },
+          "participantToken": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/RoomState"
+          },
+          "participant": {
+            "$ref": "#/components/schemas/Participant"
+          }
+        },
+        "required": [
+          "hostToken",
+          "participantToken",
+          "state",
+          "participant"
+        ],
+        "additionalProperties": false
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "additionalProperties": false
+      },
+      "JoinRoomResponse": {
+        "type": "object",
+        "properties": {
+          "room": {
+            "$ref": "#/components/schemas/Room"
+          },
+          "participant": {
+            "$ref": "#/components/schemas/Participant"
+          },
+          "participantToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "room",
+          "participant",
+          "participantToken"
+        ],
+        "additionalProperties": false
+      },
+      "RoomRecordOutput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "host_token": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "card_set": {
+            "type": "string"
+          },
+          "revealed": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "active_issue_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "host_token",
+          "owner_id",
+          "card_set",
+          "revealed",
+          "active_issue_id",
+          "created_at",
+          "updated_at"
+        ],
+        "additionalProperties": false
+      },
+      "ParticipantRecordOutput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "is_spectator": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "last_seen_at": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "room_id",
+          "name",
+          "token",
+          "is_spectator",
+          "last_seen_at",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "AdminExport": {
+        "type": "object",
+        "properties": {
+          "rooms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoomRecordOutput"
+            }
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParticipantRecordOutput"
+            }
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueOutput"
+            }
+          },
+          "votes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VoteOutput"
+            }
+          }
+        },
+        "required": [
+          "rooms",
+          "participants",
+          "issues",
+          "votes"
+        ],
+        "additionalProperties": false
+      },
+      "AdminImportResult": {
+        "type": "object",
+        "properties": {
+          "rooms": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "participants": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "issues": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "votes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "rooms",
+          "participants",
+          "issues",
+          "votes"
+        ],
+        "additionalProperties": false
+      },
+      "RoomRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "host_token": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "card_set": {
+            "type": "string"
+          },
+          "revealed": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "active_issue_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "host_token",
+          "owner_id",
+          "card_set",
+          "revealed",
+          "active_issue_id",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "ParticipantRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "is_spectator": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "last_seen_at": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "room_id",
+          "name",
+          "token",
+          "is_spectator",
+          "last_seen_at",
+          "created_at"
+        ]
+      },
+      "Issue": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "estimate": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "archived_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "room_id",
+          "title",
+          "description",
+          "link",
+          "position",
+          "estimate",
+          "archived_at",
+          "created_at"
+        ]
+      },
+      "Vote": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "issue_id": {
+            "type": "string"
+          },
+          "participant_id": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "room_id",
+          "issue_id",
+          "participant_id",
+          "value",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "AdminDump": {
+        "type": "object",
+        "properties": {
+          "rooms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoomRecord"
+            }
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParticipantRecord"
+            }
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            }
+          },
+          "votes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Vote"
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "operationId": "getHealth",
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rooms": {
+      "post": {
+        "operationId": "createRoom",
+        "tags": [
+          "Rooms"
+        ],
+        "summary": "Create a planning room",
+        "responses": {
+          "201": {
+            "description": "Room created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateRoomResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "roomName": {
+                    "type": "string"
+                  },
+                  "participantName": {
+                    "type": "string"
+                  },
+                  "defaults": {
+                    "type": "object",
+                    "properties": {
+                      "roomName": {
+                        "type": "string"
+                      },
+                      "facilitatorName": {
+                        "type": "string"
+                      },
+                      "firstStoryTitle": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "roomName",
+                      "facilitatorName",
+                      "firstStoryTitle"
+                    ]
+                  }
+                },
+                "required": [
+                  "roomName",
+                  "participantName",
+                  "defaults"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rooms/{room}/join": {
+      "post": {
+        "operationId": "joinRoom",
+        "tags": [
+          "Rooms"
+        ],
+        "summary": "Join a room by code",
+        "responses": {
+          "201": {
+            "description": "Joined",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JoinRoomResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Room code or name is missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "isSpectator": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "isSpectator"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "room",
+            "required": true
+          }
+        ]
+      }
+    },
+    "/api/rooms/{room}": {
+      "get": {
+        "operationId": "getRoom",
+        "tags": [
+          "Rooms"
+        ],
+        "summary": "Load room state",
+        "security": [
+          {
+            "HostToken": []
+          },
+          {
+            "ParticipantToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Room state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomState"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Room access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "room",
+            "required": true
+          }
+        ]
+      }
+    },
+    "/api/rooms/{room}/transfer-ownership": {
+      "post": {
+        "operationId": "transferOwnership",
+        "tags": [
+          "Rooms"
+        ],
+        "summary": "Transfer host ownership",
+        "security": [
+          {
+            "HostToken": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Ownership transferred"
+          },
+          "403": {
+            "description": "Host access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room or participant not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "participantId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "participantId"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "room",
+            "required": true
+          }
+        ]
+      }
+    },
+    "/api/rooms/{room}/active-issue": {
+      "patch": {
+        "operationId": "setActiveIssue",
+        "tags": [
+          "Issues"
+        ],
+        "summary": "Select the active story",
+        "security": [
+          {
+            "HostToken": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Active story changed"
+          },
+          "403": {
+            "description": "Host access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room or story not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "issueId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "issueId"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "room",
+            "required": true
+          }
+        ]
+      }
+    },
+    "/api/rooms/{room}/reveal": {
+      "patch": {
+        "operationId": "revealVotes",
+        "tags": [
+          "Votes"
+        ],
+        "summary": "Reveal votes",
+        "security": [
+          {
+            "HostToken": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Votes revealed"
+          },
+          "403": {
+            "description": "Host access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "room",
+            "required": true
+          }
+        ]
+      }
+    },
+    "/api/participants/{participant}/heartbeat": {
+      "post": {
+        "operationId": "heartbeat",
+        "tags": [
+          "Participants"
+        ],
+        "summary": "Refresh participant presence",
+        "security": [
+          {
+            "ParticipantToken": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Heartbeat recorded"
+          },
+          "403": {
+            "description": "Participant access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Participant not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "participant",
+            "required": true
+          }
+        ]
+      }
+    },
+    "/api/participants/{participant}": {
+      "patch": {
+        "operationId": "updateParticipant",
+        "tags": [
+          "Participants"
+        ],
+        "summary": "Change spectator mode",
+        "security": [
+          {
+            "ParticipantToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated participant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Participant"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Participant access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Participant not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "isSpectator": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "isSpectator"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "participant",
+            "required": true
+          }
+        ]
+      }
+    },
+    "/api/rooms/{room}/participants/{participant}": {
+      "delete": {
+        "operationId": "removeParticipant",
+        "tags": [
+          "Participants"
+        ],
+        "summary": "Remove a participant",
+        "security": [
+          {
+            "HostToken": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Participant removed"
+          },
+          "403": {
+            "description": "Host access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room or participant not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "room",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "participant",
+            "required": true
+          }
+        ]
+      }
+    },
+    "/api/rooms/{room}/issues": {
+      "post": {
+        "operationId": "createIssue",
+        "tags": [
+          "Issues"
+        ],
+        "summary": "Add a story",
+        "security": [
+          {
+            "HostToken": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created story, or null for a blank title",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/IssueOutput"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Host access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "link": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "title"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "room",
+            "required": true
+          }
+        ]
+      }
+    },
+    "/api/rooms/{room}/issues/import": {
+      "post": {
+        "operationId": "importIssues",
+        "tags": [
+          "Issues"
+        ],
+        "summary": "Import a story batch",
+        "security": [
+          {
+            "HostToken": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Imported stories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IssueOutput"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Host access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "issues": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "link": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "estimate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "title"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "issues"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "room",
+            "required": true
+          }
+        ]
+      }
+    },
+    "/api/issues/{issue}": {
+      "patch": {
+        "operationId": "updateIssue",
+        "tags": [
+          "Issues"
+        ],
+        "summary": "Edit a story",
+        "security": [
+          {
+            "HostToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated story",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueOutput"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Story title is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Host access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Story or room not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "link": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "title"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "issue",
+            "required": true
+          }
+        ]
+      }
+    },
+    "/api/rooms/{room}/issues/{issue}": {
+      "delete": {
+        "operationId": "deleteIssue",
+        "tags": [
+          "Issues"
+        ],
+        "summary": "Delete a story",
+        "security": [
+          {
+            "HostToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "next_active_issue_id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "room",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "issue",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Story deleted"
+          },
+          "403": {
+            "description": "Host access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Story or room not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rooms/{room}/issues/{issue}/archive": {
+      "patch": {
+        "operationId": "archiveIssue",
+        "tags": [
+          "Issues"
+        ],
+        "summary": "Archive a story",
+        "security": [
+          {
+            "HostToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Archived story",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueOutput"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Host access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Story or room not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nextActiveIssueId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "nextActiveIssueId"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "room",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "issue",
+            "required": true
+          }
+        ]
+      }
+    },
+    "/api/rooms/{room}/issues/archive-estimated": {
+      "post": {
+        "operationId": "archiveEstimatedIssues",
+        "tags": [
+          "Issues"
+        ],
+        "summary": "Archive all estimated stories",
+        "security": [
+          {
+            "HostToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Archived stories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IssueOutput"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Host access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nextActiveIssueId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "nextActiveIssueId"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "room",
+            "required": true
+          }
+        ]
+      }
+    },
+    "/api/rooms/{room}/issues/{issue}/unarchive": {
+      "patch": {
+        "operationId": "unarchiveIssue",
+        "tags": [
+          "Issues"
+        ],
+        "summary": "Restore an archived story",
+        "security": [
+          {
+            "HostToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restored story",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueOutput"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Host access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Story or room not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "room",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "issue",
+            "required": true
+          }
+        ]
+      }
+    },
+    "/api/issues/{issue}/estimate": {
+      "patch": {
+        "operationId": "setEstimate",
+        "tags": [
+          "Issues"
+        ],
+        "summary": "Save a story estimate",
+        "security": [
+          {
+            "HostToken": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Estimate saved"
+          },
+          "403": {
+            "description": "Host access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Story or room not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "value"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "issue",
+            "required": true
+          }
+        ]
+      }
+    },
+    "/api/rooms/{room}/issues/{issue}/votes/{participant}": {
+      "put": {
+        "operationId": "castVote",
+        "tags": [
+          "Votes"
+        ],
+        "summary": "Cast or change a vote",
+        "security": [
+          {
+            "ParticipantToken": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Vote saved"
+          },
+          "403": {
+            "description": "Participant access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room, story or participant not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "value"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "room",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "issue",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "participant",
+            "required": true
+          }
+        ]
+      }
+    },
+    "/api/rooms/{room}/issues/{issue}/reset-votes": {
+      "post": {
+        "operationId": "resetVotes",
+        "tags": [
+          "Votes"
+        ],
+        "summary": "Clear votes for a story",
+        "security": [
+          {
+            "HostToken": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Votes cleared"
+          },
+          "403": {
+            "description": "Host access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Story or room not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "room",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "issue",
+            "required": true
+          }
+        ]
+      }
+    },
+    "/api/issues/{issue}/votes/{participant}": {
+      "delete": {
+        "operationId": "deleteVote",
+        "tags": [
+          "Votes"
+        ],
+        "summary": "Withdraw a vote",
+        "security": [
+          {
+            "ParticipantToken": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Vote removed"
+          },
+          "403": {
+            "description": "Participant access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Story or participant not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "issue",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "participant",
+            "required": true
+          }
+        ]
+      }
+    },
+    "/api/admin/export": {
+      "get": {
+        "operationId": "adminExport",
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Export all data",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Full data dump",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminExport"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Admin API disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/import": {
+      "post": {
+        "operationId": "adminImport",
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Replace all data from a dump",
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/AdminDump"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "$ref": "#/components/schemas/AdminDump"
+                      }
+                    },
+                    "required": [
+                      "data"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Imported row counts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminImportResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dangling reference in the dump",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Admin API disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

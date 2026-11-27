@@ -1,0 +1,41 @@
+name: Checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --workspaces=false
+      - run: npm run build
+
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Verify generated OpenAPI and client
+        run: |
+          npm run openapi:generate
+          git diff --exit-code -- backend/openapi.json src/shared/api/generated
+      - name: Typecheck and tests
+        run: |
+          npm run backend:check
+          npm run backend:test
+      - name: Compile and bundle the Worker
+        working-directory: backend
+        run: npx wrangler deploy --dry-run --outdir .wrangler/dry-run

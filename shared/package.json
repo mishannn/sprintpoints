@@ -1,0 +1,34 @@
+{
+  "name": "@sprintpoints/shared",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "description": "API types, request schemas and constants for the Sprint Points frontend",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts",
+      "default": "./index.ts"
+    },
+    "./types": {
+      "types": "./types.ts",
+      "import": "./types.ts",
+      "default": "./types.ts"
+    },
+    "./schemas": {
+      "types": "./schemas.ts",
+      "import": "./schemas.ts",
+      "default": "./schemas.ts"
+    },
+    "./constants": {
+      "types": "./constants.ts",
+      "import": "./constants.ts",
+      "default": "./constants.ts"
+    }
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  }
+}

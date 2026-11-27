@@ -1,0 +1,20 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "sprintpoints",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-26",
+  "observability": { "enabled": true },
+  "preview_urls": false,
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "RoomDatabase" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RoomDatabase"] }],
+  "vars": {
+    // Comma-separated browser origins, or "*" to allow any origin.
+    "CORS_ORIGINS": "https://mishannn.github.io",
+  },
+  // The public hostname is attached in the Cloudflare dashboard or with
+  // `npx wrangler deploy --route sprintpoints.example.com/*`. Uncomment and
+  // adjust to keep it in the repository instead:
+  // "routes": [{ "pattern": "sprintpoints.example.com/*", "zone_name": "example.com" }],
+}

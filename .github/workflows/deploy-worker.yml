@@ -1,0 +1,51 @@
+name: Deploy Worker
+
+# Deploys the TypeScript backend on every push to main that touches the Worker,
+# its shared contract, or the dependencies it installs from the root workspace.
+# Requires CLOUDFLARE_API_TOKEN with Workers Scripts:Edit, Durable Objects:Edit
+# and Workers Routes:Edit.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "shared/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/deploy-worker.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Require CLOUDFLARE_API_TOKEN
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Missing repository secret CLOUDFLARE_API_TOKEN."
+            exit 1
+          fi
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Verify generated OpenAPI and client
+        run: |
+          npm run openapi:generate
+          git diff --exit-code -- backend/openapi.json src/shared/api/generated
+      - name: Typecheck and tests
+        run: |
+          npm run backend:check
+          npm run backend:test
+      - name: Deploy
+        working-directory: backend
+        run: npx wrangler deploy
